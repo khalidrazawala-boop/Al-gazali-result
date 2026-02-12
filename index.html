@@ -1,267 +1,243 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
-
-// Firebase Configuration - Do not edit these variables
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ghazali-academy-v5';
-
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [page, setPage] = useState('home');
-  const [rollSearch, setRollSearch] = useState('');
-  const [currentStudent, setCurrentStudent] = useState(null);
-  const [adminTab, setAdminTab] = useState('admit');
-  const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('');
-
-  // Cloud Data States
-  const [admitDb, setAdmitDb] = useState({});
-  const [resultDb, setResultDb] = useState({});
-
-  // Auth Initialization (RULE 3)
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Ghazali Academy - Professional Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Montserrat', sans-serif; }
+        .academy-title { font-family: 'Cinzel', serif; }
+        
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding: 0; }
+            .print-container { box-shadow: none !important; border: 4px solid #004d3d !important; }
         }
-      } catch (err) {
-        console.error("Authentication Failed:", err);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsubscribe();
-  }, []);
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
 
-  // Data Fetching from Firestore
-  useEffect(() => {
-    if (!user) return;
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    const admitRef = collection(db, 'artifacts', appId, 'public', 'data', 'admitCards');
-    const unsubAdmit = onSnapshot(admitRef, (snapshot) => {
-      const data = {};
-      snapshot.forEach(d => { data[d.id] = d.data(); });
-      setAdmitDb(data);
-    }, (err) => console.error("Firestore Admit Error:", err));
-
-    const resultRef = collection(db, 'artifacts', appId, 'public', 'data', 'results');
-    const unsubResult = onSnapshot(resultRef, (snapshot) => {
-      const data = {};
-      snapshot.forEach(d => { data[d.id] = d.data(); });
-      setResultDb(data);
-    }, (err) => console.error("Firestore Result Error:", err));
-
-    return () => { unsubAdmit(); unsubResult(); };
-  }, [user]);
-
-  // Forms Management
-  const [admitForm, setAdmitForm] = useState({ roll: '', name: '', father: '', mother: 'AMMI', class: 'ULA', age: '15 Years' });
-  const [resultForm, setResultForm] = useState({ roll: '', s1: 'Quran Kareem', m1: '', s2: 'Hadith Studies', m2: '', s3: 'Islamic Fiqh', m3: '', s4: 'Arabic Lang', m4: '', s5: 'Urdu Lit', m5: '', s6: 'English', m6: '' });
-
-  const showMsg = (msg) => {
-    setStatusMsg(msg);
-    setTimeout(() => setStatusMsg(''), 5000);
-  };
-
-  const handleSaveAdmit = async () => {
-    if (!user || !admitForm.roll) { showMsg("Please enter Roll No."); return; }
-    setLoading(true);
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitCards', admitForm.roll), admitForm);
-      showMsg(`Success: Student ${admitForm.roll} Registered!`);
-    } catch (err) {
-      showMsg("Cloud Save Error. Check Connection.");
-    }
-    setLoading(false);
-  };
-
-  const handleSaveResult = async () => {
-    if (!user || !resultForm.roll) { showMsg("Please enter Roll No."); return; }
-    setLoading(true);
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', resultForm.roll), resultForm);
-      showMsg(`Success: Results for ${resultForm.roll} Saved!`);
-    } catch (err) {
-      showMsg("Cloud Save Error. Try Again.");
-    }
-    setLoading(false);
-  };
-
-  const handleSearch = () => {
-    const roll = rollSearch.trim();
-    if (!roll) return;
-    if (admitDb[roll]) {
-      setCurrentStudent({ ...admitDb[roll], ...resultDb[roll] });
-      setPage('result-view');
-    } else {
-      showMsg("Roll Number not found in database!");
-    }
-  };
-
-  const calculateTotal = (stu) => {
-    const marks = [stu.m1, stu.m2, stu.m3, stu.m4, stu.m5, stu.m6].map(m => Number(m) || 0);
-    return marks.reduce((a, b) => a + b, 0);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 text-slate-900 font-sans">
-      {/* Alert Banner */}
-      {statusMsg && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 text-white p-4 text-center font-bold shadow-xl animate-slide-down">
-          {statusMsg}
-        </div>
-      )}
-
-      {/* Navigation Header */}
-      <nav className="bg-[#004d3d] p-4 text-white flex justify-between items-center shadow-md no-print">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('home')}>
-          <div className="bg-white p-1 rounded-lg">
-             <svg width="30" height="30" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
-          </div>
-          <span className="font-black tracking-tighter text-lg uppercase">Al Ghazali Academy</span>
-        </div>
-        <button onClick={() => setPage('admin-login')} className="bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded font-bold text-xs uppercase transition-all">Staff Login</button>
-      </nav>
-
-      <main className="p-4 max-w-4xl mx-auto">
-        {page === 'home' && (
-          <div className="mt-20 text-center">
-            <div className="bg-white p-8 rounded-3xl shadow-2xl border-b-8 border-emerald-600 inline-block w-full max-w-sm">
-              <h2 className="text-2xl font-black text-[#004d3d] mb-6 uppercase">Student Portal</h2>
-              <input 
-                type="text" placeholder="Roll Number" 
-                className="w-full p-4 border-2 rounded-xl text-center text-2xl font-black mb-4 outline-none focus:border-emerald-500"
-                value={rollSearch} onChange={e => setRollSearch(e.target.value)}
-              />
-              <button onClick={handleSearch} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all uppercase">Find Result</button>
-            </div>
-          </div>
-        )}
-
-        {page === 'result-view' && currentStudent && (
-          <div className="flex flex-col gap-4">
-            <div className="no-print flex gap-2">
-               <button onClick={() => setPage('home')} className="bg-white px-4 py-2 rounded shadow font-bold">Back</button>
-               <button onClick={() => window.print()} className="flex-grow bg-slate-900 text-white py-2 rounded shadow font-bold">Download / Print PDF</button>
-            </div>
+        function App() {
+            const [page, setPage] = useState('home');
+            const [rollSearch, setRollSearch] = useState('');
+            const [status, setStatus] = useState('');
+            const [viewMode, setViewMode] = useState('result'); 
             
-            {/* Professional Marksheet Design */}
-            <div className="bg-white p-8 border-[12px] border-double border-[#004d3d] shadow-xl relative">
-              <div className="text-center mb-8">
-                <h1 className="text-[#004d3d] text-3xl font-black uppercase">Al Ghazali Online Girls Academy</h1>
-                <p className="font-bold text-slate-500 tracking-widest text-sm">ANNUAL EXAMINATION RESULT 2025-2026</p>
-                <div className="mt-4 bg-emerald-100 text-emerald-800 px-4 py-1 rounded-full text-xs font-black inline-block">STATEMENT OF MARKS</div>
-              </div>
+            const [students, setStudents] = useState(() => {
+                const saved = localStorage.getItem('ghazali_v8_data');
+                return saved ? JSON.parse(saved) : {};
+            });
 
-              <div className="grid grid-cols-2 gap-4 text-sm border-b pb-6 mb-6">
-                 <div className="flex justify-between border-r pr-4"><b>Student Name:</b> <span className="uppercase">{currentStudent.name}</span></div>
-                 <div className="flex justify-between pl-4"><b>Roll Number:</b> <span>{currentStudent.roll}</span></div>
-                 <div className="flex justify-between border-r pr-4"><b>Father's Name:</b> <span className="uppercase">{currentStudent.father}</span></div>
-                 <div className="flex justify-between pl-4"><b>Mother's Name:</b> <span className="uppercase">{currentStudent.mother}</span></div>
-                 <div className="flex justify-between border-r pr-4"><b>Class:</b> <span className="uppercase">{currentStudent.class}</span></div>
-                 <div className="flex justify-between pl-4"><b>Age:</b> <span>{currentStudent.age}</span></div>
-              </div>
+            useEffect(() => {
+                localStorage.setItem('ghazali_v8_data', JSON.stringify(students));
+            }, [students]);
 
-              <table className="w-full border-2 border-[#004d3d] mb-8">
-                <thead className="bg-[#004d3d] text-white text-[10px] uppercase">
-                  <tr>
-                    <th className="p-2 border">Sr.</th>
-                    <th className="p-2 border text-left">Subject Name</th>
-                    <th className="p-2 border text-center">Max Marks</th>
-                    <th className="p-2 border text-center">Obtained Marks</th>
-                  </tr>
-                </thead>
-                <tbody className="font-bold text-sm">
-                  {[1,2,3,4,5,6].map(i => (
-                    <tr key={i} className="border-b">
-                      <td className="p-2 border text-center">{i}</td>
-                      <td className="p-2 border italic">{currentStudent[`s${i}`]}</td>
-                      <td className="p-2 border text-center text-slate-300">100</td>
-                      <td className="p-2 border text-center bg-emerald-50">{currentStudent[`m${i}`] || '0'}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-slate-900 text-white">
-                    <td colSpan="2" className="p-3 text-right uppercase">Total Marks Obtained</td>
-                    <td className="p-3 text-center">600</td>
-                    <td className="p-3 text-center text-xl text-emerald-400">{calculateTotal(currentStudent)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            const [formData, setFormData] = useState({
+                roll: '', name: '', father: '', mother: '', class: 'ULA', age: '',
+                s1: 'Quran Kareem', m1: '',
+                s2: 'Hadith Studies', m2: '',
+                s3: 'Islamic Fiqh', m3: '',
+                s4: 'Arabic Lang', m4: '',
+                s5: 'Urdu Lit', m5: '',
+                s6: 'English', m6: ''
+            });
 
-              <div className="flex justify-between mt-12 text-[10px] font-bold text-slate-400 px-4 uppercase">
-                <div className="text-center"><div className="w-24 h-px bg-slate-200 mb-1"></div>Controller</div>
-                <div className="text-center opacity-10 italic">Academy Seal</div>
-                <div className="text-center"><div className="w-24 h-px bg-slate-200 mb-1"></div>Principal</div>
-              </div>
-            </div>
-          </div>
-        )}
+            const showMsg = (m) => {
+                setStatus(m);
+                setTimeout(() => setStatus(''), 4000);
+            };
 
-        {page === 'admin-login' && (
-          <div className="mt-20 max-w-xs mx-auto bg-white p-8 rounded-2xl shadow-xl text-center">
-            <h2 className="font-black mb-6">Staff Access</h2>
-            <input type="password" id="pin" placeholder="Enter PIN" className="w-full p-3 border-b-2 border-slate-900 text-center text-2xl font-black mb-6 outline-none" />
-            <button onClick={() => {
-              const p = document.getElementById('pin').value;
-              if (p === '1234') setPage('admin'); else showMsg("Wrong PIN!");
-            }} className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold">Login</button>
-          </div>
-        )}
+            const handleSave = () => {
+                if(!formData.roll) return showMsg("Roll Number likhna zaruri hai!");
+                setStudents(prev => ({ ...prev, [formData.roll]: formData }));
+                showMsg("Data Kamyabi se Save ho gaya!");
+            };
 
-        {page === 'admin' && (
-          <div className="bg-white p-6 rounded-3xl shadow-2xl border-t-8 border-emerald-600">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-emerald-800 italic uppercase">Admin Dashboard</h2>
-              <div className="flex gap-2">
-                <button onClick={() => setAdminTab('admit')} className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase transition-all ${adminTab === 'admit' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>Registration</button>
-                <button onClick={() => setAdminTab('result')} className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase transition-all ${adminTab === 'result' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>Marks Upload</button>
-                <button onClick={() => setPage('home')} className="bg-slate-900 text-white px-3 py-1 rounded-full text-[10px] font-bold">Exit</button>
-              </div>
-            </div>
+            const currentStudent = students[rollSearch];
+            const calculateTotal = (s) => [s.m1, s.m2, s.m3, s.m4, s.m5, s.m6].reduce((a, b) => a + (Number(b) || 0), 0);
 
-            {loading ? (
-              <div className="p-20 text-center animate-pulse font-black text-emerald-600">CLOUD SYNCING...</div>
-            ) : adminTab === 'admit' ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-emerald-50 p-6 rounded-2xl">
-                   <div><label className="text-[10px] font-bold">ROLL NO</label><input type="text" className="w-full p-2 border rounded font-black" value={admitForm.roll} onChange={e => setAdmitForm({...admitForm, roll: e.target.value})} onBlur={e => { if(admitDb[e.target.value]) setAdmitForm(admitDb[e.target.value]); }} /></div>
-                   <div><label className="text-[10px] font-bold">NAME</label><input type="text" className="w-full p-2 border rounded" value={admitForm.name} onChange={e => setAdmitForm({...admitForm, name: e.target.value})} /></div>
-                   <div><label className="text-[10px] font-bold">FATHER</label><input type="text" className="w-full p-2 border rounded" value={admitForm.father} onChange={e => setAdmitForm({...admitForm, father: e.target.value})} /></div>
-                   <div><label className="text-[10px] font-bold">MOTHER</label><input type="text" className="w-full p-2 border rounded" value={admitForm.mother} onChange={e => setAdmitForm({...admitForm, mother: e.target.value})} /></div>
-                   <div><label className="text-[10px] font-bold">CLASS</label><input type="text" className="w-full p-2 border rounded" value={admitForm.class} onChange={e => setAdmitForm({...admitForm, class: e.target.value})} /></div>
-                   <div><label className="text-[10px] font-bold">AGE</label><input type="text" className="w-full p-2 border rounded" value={admitForm.age} onChange={e => setAdmitForm({...admitForm, age: e.target.value})} /></div>
-                </div>
-                <button onClick={handleSaveAdmit} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-lg shadow-lg">SAVE STUDENT DETAILS</button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-slate-50 p-4 rounded-xl border-b-4 border-slate-200">
-                  <label className="text-[10px] font-black">ENTER ROLL NO TO ADD MARKS</label>
-                  <input type="text" className="w-full p-3 border rounded text-2xl font-black max-w-xs block" value={resultForm.roll} onChange={e => setResultForm({...resultForm, roll: e.target.value})} onBlur={e => { if(resultDb[e.target.value]) setResultForm(resultDb[e.target.value]); }} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[1,2,3,4,5,6].map(i => (
-                    <div key={i} className="flex items-center gap-2 bg-white p-3 border rounded-lg shadow-sm">
-                       <input type="text" className="flex-grow font-bold text-slate-400 text-xs italic bg-transparent outline-none" value={resultForm[`s${i}`]} onChange={e => setResultForm({...resultForm, [`s${i}`]: e.target.value})} />
-                       <input type="number" placeholder="Marks" className="w-16 p-2 bg-emerald-50 text-center font-black rounded border-none" value={resultForm[`m${i}`]} onChange={e => setResultForm({...resultForm, [`m${i}`]: e.target.value})} />
-                    </div>
-                  ))}
-                </div>
-                <button onClick={handleSaveResult} className="w-full bg-emerald-700 text-white py-4 rounded-xl font-black text-lg shadow-lg">UPLOAD MARKS TO DATABASE</button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+            return (
+                <div className="min-h-screen pb-10">
+                    {status && (
+                        <div className="fixed top-0 left-0 right-0 bg-emerald-600 text-white p-4 text-center font-bold z-50 shadow-xl">
+                            {status}
+                        </div>
+                    )}
+                    
+                    {/* Navigation with Logo Style */}
+                    <nav className="bg-[#004d3d] p-4 text-white flex justify-between items-center shadow-2xl no-print">
+                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('home')}>
+                            <div className="bg-white p-1.5 rounded-full shadow-inner">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
+                            </div>
+                            <div>
+                                <h1 className="academy-title text-xl font-black tracking-tighter uppercase leading-none">Al Ghazali</h1>
+                                <p className="text-[8px] font-bold tracking-[0.3em] text-emerald-300">GIRLS ACADEMY</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setPage('admin')} className="bg-emerald-500 hover:bg-emerald-400 px-5 py-2 rounded-xl font-black text-[10px] shadow-lg transition-all">STAFF LOGIN</button>
+                    </nav>
 
+                    <main className="p-4 max-w-2xl mx-auto">
+                        {page === 'home' && (
+                            <div className="mt-20 bg-white p-10 rounded-[40px] shadow-2xl border-b-[10px] border-emerald-800 text-center relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
+                                <h2 className="text-3xl font-black text-[#004d3d] mb-2 uppercase academy-title">Welcome Portal</h2>
+                                <p className="text-slate-400 text-xs font-bold mb-8 italic">Enter Roll Number to Access Documents</p>
+                                
+                                <input 
+                                    type="text" placeholder="Roll No" 
+                                    className="w-full p-5 border-2 border-slate-100 rounded-3xl text-center text-4xl font-black mb-8 outline-none focus:border-emerald-500 shadow-inner bg-slate-50"
+                                    value={rollSearch} onChange={e => setRollSearch(e.target.value)}
+                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => { if(students[rollSearch]) { setPage('view'); setViewMode('result'); } else showMsg("Roll No Not Found!"); }}
+                                        className="bg-emerald-700 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-800 shadow-xl transform active:scale-95 transition-all"
+                                    >
+                                        VIEW RESULT
+                                    </button>
+                                    <button 
+                                        onClick={() => { if(students[rollSearch]) { setPage('view'); setViewMode('admit'); } else showMsg("Roll No Not Found!"); }}
+                                        className="bg-slate-800 text-white py-5 rounded-2xl font-black text-lg hover:bg-slate-900 shadow-xl transform active:scale-95 transition-all"
+                                    >
+                                        ADMIT CARD
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {page === 'view' && currentStudent && (
+                            <div className="flex flex-col gap-6 mt-4">
+                                <div className="no-print flex gap-2">
+                                    <button onClick={() => setPage('home')} className="bg-white px-6 py-3 rounded-2xl shadow-lg font-black text-slate-600 hover:bg-slate-50">← BACK</button>
+                                    <button onClick={() => window.print()} className="flex-grow bg-[#004d3d] text-white py-3 rounded-2xl shadow-xl font-black uppercase tracking-widest hover:bg-emerald-900 transition-all">Download / Print PDF</button>
+                                </div>
+                                
+                                <div className="print-container bg-white p-10 border-[14px] border-double border-[#004d3d] shadow-2xl relative">
+                                    {/* Header Design */}
+                                    <div className="text-center mb-8 pb-6 border-b-2 border-slate-100">
+                                        <div className="flex justify-center mb-3">
+                                            <svg width="40" height="40" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
+                                        </div>
+                                        <h1 className="academy-title text-[#004d3d] text-3xl font-black uppercase leading-tight tracking-tighter">Al Ghazali Online Girls Academy</h1>
+                                        <div className="flex items-center justify-center gap-4 mt-2">
+                                            <div className="h-px bg-emerald-200 w-16"></div>
+                                            <p className="font-black text-emerald-600 text-[10px] tracking-[0.4em] uppercase">
+                                                {viewMode === 'result' ? 'Annual Result 2025' : 'Examination Admit Card'}
+                                            </p>
+                                            <div className="h-px bg-emerald-200 w-16"></div>
+                                        </div>
+                                    </div>
+
+                                    {viewMode === 'result' ? (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-[12px] mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>NAME:</span> <span className="uppercase text-[#004d3d]">{currentStudent.name}</span></div>
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>ROLL NO:</span> <span>{currentStudent.roll}</span></div>
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>FATHER:</span> <span className="uppercase">{currentStudent.father}</span></div>
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>MOTHER:</span> <span className="uppercase">{currentStudent.mother}</span></div>
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>CLASS:</span> <span className="uppercase">{currentStudent.class}</span></div>
+                                                <div className="flex justify-between border-b pb-1 font-bold"><span>AGE:</span> <span>{currentStudent.age}</span></div>
+                                            </div>
+
+                                            <table className="w-full border-2 border-[#004d3d] rounded-lg overflow-hidden">
+                                                <thead className="bg-[#004d3d] text-white text-[10px] uppercase font-black">
+                                                    <tr>
+                                                        <th className="p-3 border border-emerald-800">Sr.</th>
+                                                        <th className="p-3 border border-emerald-800 text-left">Subjects</th>
+                                                        <th className="p-3 border border-emerald-800">Total</th>
+                                                        <th className="p-3 border border-emerald-800">Obtained</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="font-bold text-center">
+                                                    {[1,2,3,4,5,6].map(i => (
+                                                        <tr key={i} className="border-b hover:bg-slate-50">
+                                                            <td className="p-3 border-r text-slate-300 italic">{i}</td>
+                                                            <td className="p-3 border-r text-left italic font-bold">{currentStudent[`s${i}`]}</td>
+                                                            <td className="p-3 border-r text-slate-300">100</td>
+                                                            <td className="p-3 bg-emerald-50 text-emerald-900 text-xl font-black">{currentStudent[`m${i}`] || '0'}</td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr className="bg-slate-900 text-white">
+                                                        <td colSpan="2" className="p-4 text-right uppercase font-black tracking-widest">Grand Total</td>
+                                                        <td className="p-4 border-r border-slate-700">600</td>
+                                                        <td className="p-4 text-emerald-400 text-3xl font-black">{calculateTotal(currentStudent)}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </>
+                                    ) : (
+                                        /* Admit Card Design */
+                                        <div className="border-4 border-double border-slate-900 p-6 rounded-lg bg-slate-50 relative">
+                                            <div className="flex gap-8 items-start">
+                                                <div className="flex-grow space-y-4">
+                                                    <div className="flex items-end gap-4 border-b-2 border-slate-200 pb-2">
+                                                        <span className="text-[10px] font-black w-24 text-slate-400">ROLL NUMBER:</span>
+                                                        <span className="text-3xl font-black text-[#004d3d]">{currentStudent.roll}</span>
+                                                    </div>
+                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
+                                                        <span className="text-[10px] font-black w-24 text-slate-400">NAME:</span>
+                                                        <span className="text-lg font-bold uppercase">{currentStudent.name}</span>
+                                                    </div>
+                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
+                                                        <span className="text-[10px] font-black w-24 text-slate-400">FATHER:</span>
+                                                        <span className="text-lg font-bold uppercase">{currentStudent.father}</span>
+                                                    </div>
+                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
+                                                        <span className="text-[10px] font-black w-24 text-slate-400">CLASS:</span>
+                                                        <span className="text-lg font-black uppercase text-emerald-700">{currentStudent.class}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-36 h-40 border-4 border-dashed border-slate-300 flex items-center justify-center text-center p-4 bg-white rounded-xl shadow-inner">
+                                                    <span className="text-[9px] font-black text-slate-300 uppercase leading-tight">Attach Student Photo Here</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-16 flex justify-between px-4">
+                                                <div className="text-center border-t-2 border-slate-900 pt-2 w-32 font-black text-[10px] uppercase">Candidate Sign</div>
+                                                <div className="text-center border-t-2 border-slate-900 pt-2 w-32 font-black text-[10px] uppercase">Principal Sign</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between mt-12 text-[10px] font-black text-slate-300 px-4 uppercase tracking-[0.2em]">
+                                        <div className="text-center"><div className="w-24 h-px bg-slate-100 mb-2"></div>Controller</div>
+                                        <div className="text-center italic opacity-10">Academy Seal</div>
+                                        <div className="text-center"><div className="w-24 h-px bg-slate-100 mb-2"></div>Authorized</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {page === 'admin' && (
+                            <div className="bg-white p-8 rounded-[40px] shadow-2xl border-t-[10px] border-emerald-600">
+                                <div className="flex justify-between items-center mb-10 pb-4 border-b border-slate-100">
+                                    <h2 className="text-2xl font-black text-emerald-800 uppercase academy-title">Admin Dashboard</h2>
+                                    <button onClick={() => setPage('home')} className="bg-slate-900 text-white px-6 py-2 rounded-full text-[10px] font-bold">EXIT</button>
+                                </div>
+                                
+                                <div className="space-y-8">
+                                    <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
+                                        <label className="text-[10px] font-black block mb-2 text-emerald-800 uppercase tracking-widest">Enter Roll No to Add/Edit</label>
+                                        <input type="text" className="w-full p-4 border-2 border-emerald-200 rounded-2xl font-black text-3xl mb-6 outline-none focus:ring-4 ring-emerald-100" value={formData.roll} 
+                                            onChange={e => setFormData({...formData, roll: e.target.value})} 
+                                            onBlur={e => { if(students[e.target.value]) setFormData(students[e.target.value]); }} 
+                                        />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">NAME</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">FATHER</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.father} onChange={e => setFormData({...formData, father: e.target.value})} /></div>
+                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">MOTHER</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.mother} onChange={e => setFormData({...formData, mother: e.target.value})} /></div>
+                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">CLASS</label><input type="text" className="w-full p-3 border rounded-xl font-bold" value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} /></div>
+                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">AGE</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} /></div>
+                                        </div>
+        
