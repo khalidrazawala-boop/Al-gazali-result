@@ -1,318 +1,320 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Ghazali Academy - Professional Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- PDF Generation Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #004d3d;
-            --gold: #c5a059;
-            --border-color: #1e293b;
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+
+// Firebase Configuration
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ghazali-academy-v5';
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState('home');
+  const [rollSearch, setRollSearch] = useState('');
+  const [currentStudent, setCurrentStudent] = useState(null);
+  const [adminTab, setAdminTab] = useState('admit');
+  const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+
+  // Local State for DB to show UI quickly
+  const [admitDb, setAdmitDb] = useState({});
+  const [resultDb, setResultDb] = useState({});
+
+  // Auth Initialization (RULE 3)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-        body { font-family: 'Poppins', sans-serif; background: #eef2f3; color: #1e293b; }
-        .college-font { font-family: 'Cinzel Decorative', serif; }
-        .classic-font { font-family: 'Old Standard TT', serif; }
+      } catch (err) {
+        console.error("Auth Error:", err);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
+
+  // Data Fetching (Cloud Sync)
+  useEffect(() => {
+    if (!user) return;
+
+    // Listen to Admits
+    const admitRef = collection(db, 'artifacts', appId, 'public', 'data', 'admitCards');
+    const unsubAdmit = onSnapshot(admitRef, (snapshot) => {
+      const data = {};
+      snapshot.forEach(doc => { data[doc.id] = doc.data(); });
+      setAdmitDb(data);
+    }, (err) => console.error("Firestore Error:", err));
+
+    // Listen to Results
+    const resultRef = collection(db, 'artifacts', appId, 'public', 'data', 'results');
+    const unsubResult = onSnapshot(resultRef, (snapshot) => {
+      const data = {};
+      snapshot.forEach(doc => { data[doc.id] = doc.data(); });
+      setResultDb(data);
+    }, (err) => console.error("Firestore Error:", err));
+
+    return () => { unsubAdmit(); unsubResult(); };
+  }, [user]);
+
+  // Form States
+  const [admitForm, setAdmitForm] = useState({ roll: '', name: '', father: '', mother: 'AMMI', class: 'ULA', age: '15 Years', center: 'Al Ghazali Main Campus', examDate: '2026-03-20' });
+  const [resultForm, setResultForm] = useState({ roll: '', s1: 'Quran Kareem', m1: '', s2: 'Hadith Studies', m2: '', s3: 'Islamic Fiqh', m3: '', s4: 'Arabic Lang', m4: '', s5: 'Urdu Lit', m5: '', s6: 'English', m6: '' });
+
+  const showMsg = (msg) => {
+    setStatusMsg(msg);
+    setTimeout(() => setStatusMsg(''), 4000);
+  };
+
+  const handleSaveAdmit = async () => {
+    if (!user || !admitForm.roll) return;
+    setLoading(true);
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitCards', admitForm.roll), admitForm);
+      showMsg(`Success: Admit Card for Roll ${admitForm.roll} saved!`);
+    } catch (err) {
+      showMsg("Error saving data. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  const handleSaveResult = async () => {
+    if (!user || !resultForm.roll) return;
+    setLoading(true);
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', resultForm.roll), resultForm);
+      showMsg(`Success: Result for Roll ${resultForm.roll} uploaded!`);
+    } catch (err) {
+      showMsg("Error saving result.");
+    }
+    setLoading(false);
+  };
+
+  const handleSearch = () => {
+    const roll = rollSearch.trim();
+    if (!roll) return;
+    const aData = admitDb[roll];
+    const rData = resultDb[roll];
+
+    if (aData) {
+      setCurrentStudent({ ...aData, ...rData });
+      setPage('result-view');
+    } else {
+      showMsg("Roll Number not found!");
+    }
+  };
+
+  const calculateResult = (stu) => {
+    const marks = [stu.m1, stu.m2, stu.m3, stu.m4, stu.m5, stu.m6].map(m => Number(m) || 0);
+    const total = marks.reduce((a, b) => a + b, 0);
+    const percentage = ((total / 600) * 100).toFixed(2);
+    return { total, percentage, status: total > 200 ? 'PASSED' : 'FAILED' };
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Custom Alert Modal */}
+      {statusMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-8 py-4 rounded-2xl shadow-2xl font-bold animate-bounce border-2 border-emerald-400">
+          {statusMsg}
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="bg-[#004d3d] text-white p-4 shadow-lg flex justify-between items-center no-print">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('home')}>
+          <div className="bg-white p-2 rounded-full shadow-inner">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
+          </div>
+          <div>
+            <h1 className="font-black text-lg leading-none uppercase tracking-tighter">Al Ghazali Online Girls Academy</h1>
+            <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest">Official Result Portal</p>
+          </div>
+        </div>
+        <button onClick={() => setPage('admin-login')} className="bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded-lg text-xs font-black shadow-lg transition-all active:scale-95 uppercase">Admin Login</button>
+      </header>
+
+      {/* Main Content */}
+      <main className="p-4 flex flex-col items-center">
+        {page === 'home' && (
+          <div className="w-full max-w-md mt-20 bg-white p-10 rounded-[2.5rem] shadow-2xl border-t-[12px] border-[#004d3d]">
+            <h2 className="text-center text-[#004d3d] font-black text-2xl mb-10 uppercase tracking-tighter">Annual Results 2025-26</h2>
+            <div className="space-y-6">
+              <input 
+                type="text" placeholder="Enter Roll No." 
+                className="w-full p-5 border-4 border-slate-100 rounded-2xl text-center text-3xl font-black focus:border-emerald-500 outline-none transition-all"
+                value={rollSearch}
+                onChange={e => setRollSearch(e.target.value)}
+              />
+              <button onClick={handleSearch} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-emerald-700 active:scale-95 transition-all uppercase">Check Result</button>
+            </div>
+          </div>
+        )}
+
+        {page === 'result-view' && currentStudent && (() => {
+          const res = calculateResult(currentStudent);
+          return (
+            <div className="w-full max-w-2xl flex flex-col items-center gap-4">
+              <div className="no-print flex gap-4 w-full">
+                <button onClick={() => setPage('home')} className="bg-white px-6 py-2 rounded-xl shadow font-bold text-slate-500">← Back</button>
+                <button onClick={() => window.print()} className="flex-grow bg-[#004d3d] text-white py-3 rounded-xl font-black shadow-lg">Print Result 🖨️</button>
+              </div>
+
+              {/* Marksheet Design (As per Uploaded Image) */}
+              <div className="bg-white border-[10px] border-double border-[#004d3d] p-8 w-full shadow-2xl relative">
+                <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center overflow-hidden">
+                   <h1 className="text-9xl font-black rotate-[-35deg] whitespace-nowrap">AL GHAZALI ACADEMY</h1>
+                </div>
+
+                <div className="text-center mb-8 border-b-2 border-emerald-100 pb-6">
+                   <h2 className="text-[#004d3d] text-3xl font-black uppercase leading-tight tracking-tighter">Al Ghazali Online Girls Academy</h2>
+                   <p className="font-black text-slate-500 text-sm mt-2 uppercase tracking-widest">Annual Examination Result 2025-2026</p>
+                   <div className="mt-4 bg-emerald-100 text-emerald-800 inline-block px-6 py-1 rounded-full text-xs font-black uppercase tracking-widest">Statement of Marks</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-y-4 mb-8 text-sm font-bold border-b-2 border-slate-100 pb-8">
+                  <div className="flex justify-between px-4 border-r"><span>Student Name:</span> <span className="text-[#004d3d] uppercase">{currentStudent.name}</span></div>
+                  <div className="flex justify-between px-4"><span>Roll Number:</span> <span className="text-[#004d3d]">{currentStudent.roll}</span></div>
+                  <div className="flex justify-between px-4 border-r"><span>Father's Name:</span> <span className="uppercase">{currentStudent.father}</span></div>
+                  <div className="flex justify-between px-4"><span>Mother's Name:</span> <span className="uppercase">{currentStudent.mother}</span></div>
+                  <div className="flex justify-between px-4 border-r"><span>Class:</span> <span className="uppercase">{currentStudent.class}</span></div>
+                  <div className="flex justify-between px-4"><span>Age:</span> <span>{currentStudent.age}</span></div>
+                </div>
+
+                <table className="w-full border-2 border-[#004d3d]">
+                  <thead>
+                    <tr className="bg-[#004d3d] text-white text-[10px] uppercase">
+                      <th className="p-3 border border-white">Sr.</th>
+                      <th className="p-3 border border-white text-left">Subject / Book Name</th>
+                      <th className="p-3 border border-white">Total Marks</th>
+                      <th className="p-3 border border-white">Obtained Marks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1,2,3,4,5,6].map(i => (
+                      <tr key={i} className="text-center font-bold text-xs border-b">
+                        <td className="p-2 border">{i}</td>
+                        <td className="p-2 border text-left italic">{currentStudent[`s${i}`]}</td>
+                        <td className="p-2 border text-slate-300">100</td>
+                        <td className="p-2 border bg-emerald-50 text-emerald-900">{currentStudent[`m${i}`] || '--'}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-900 text-white font-black">
+                       <td colSpan="2" className="p-3 text-right uppercase text-[10px]">Grand Total</td>
+                       <td className="p-3 border border-slate-700">600</td>
+                       <td className="p-3 border border-slate-700 text-xl text-emerald-400">{res.total}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="mt-12 flex justify-between items-end px-4">
+                  <div className="text-center">
+                    <div className="w-32 h-px bg-slate-300 mb-1"></div>
+                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Controller of Exams</p>
+                  </div>
+                  <div className="text-center opacity-10 flex flex-col items-center">
+                    <div className="w-16 h-16 border-4 border-emerald-900 rounded-full flex items-center justify-center font-black text-[10px] uppercase">Official<br/>Stamp</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-32 h-px bg-slate-300 mb-1"></div>
+                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Principal Signature</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {page === 'admin-login' && (
+           <div className="w-full max-w-xs mt-20 bg-white p-10 rounded-3xl shadow-2xl text-center">
+              <h2 className="font-black text-xl mb-6">Staff Access</h2>
+              <input type="password" placeholder="PIN" className="w-full p-4 border-b-4 border-slate-900 text-center text-4xl font-black outline-none mb-6" id="pin" />
+              <button onClick={() => {
+                const pin = document.getElementById('pin').value;
+                if(pin === '1234') setPage('admin');
+                else showMsg("Invalid PIN!");
+              }} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold uppercase tracking-widest">Login</button>
+           </div>
+        )}
+
+        {page === 'admin' && (
+          <div className="w-full max-w-4xl bg-white p-8 rounded-[2rem] shadow-2xl border-t-[10px] border-emerald-600">
+            <div className="flex justify-between items-center mb-8 pb-4 border-b">
+              <h2 className="font-black text-2xl text-emerald-800 uppercase italic">Admin Dashboard</h2>
+              <div className="flex gap-2">
+                <button onClick={() => setAdminTab('admit')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${adminTab === 'admit' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>Add Students</button>
+                <button onClick={() => setAdminTab('result')} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${adminTab === 'result' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>Upload Results</button>
+                <button onClick={() => setPage('home')} className="bg-slate-900 text-white px-4 py-2 rounded-full text-[10px] font-black">Exit</button>
+              </div>
+            </div>
+
+            {loading && <div className="text-center p-10 font-black animate-pulse text-emerald-600 italic">Syncing with Cloud... Please wait...</div>}
+
+            {!loading && adminTab === 'admit' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-emerald-50 p-6 rounded-2xl border-2 border-emerald-100">
+                   <div className="lg:col-span-1">
+                     <label className="text-[10px] font-black text-emerald-700">ROLL NO</label>
+                     <input type="text" className="w-full p-3 border rounded-xl font-black bg-white focus:ring-2 ring-emerald-400 outline-none" 
+                        value={admitForm.roll} 
+                        onChange={e => setAdmitForm({...admitForm, roll: e.target.value})} 
+                        onBlur={e => {
+                          const existing = admitDb[e.target.value];
+                          if(existing) setAdmitForm(existing);
+                        }} />
+                   </div>
+                   <div className="lg:col-span-3">
+                     <label className="text-[10px] font-black text-emerald-700">STUDENT FULL NAME</label>
+                     <input type="text" className="w-full p-3 border rounded-xl bg-white" value={admitForm.name} onChange={e => setAdmitForm({...admitForm, name: e.target.value})} />
+                   </div>
+                   <div><label className="text-[10px] font-black text-emerald-700">FATHER'S NAME</label><input type="text" className="w-full p-3 border rounded-xl" value={admitForm.father} onChange={e => setAdmitForm({...admitForm, father: e.target.value})} /></div>
+                   <div><label className="text-[10px] font-black text-emerald-700">MOTHER'S NAME</label><input type="text" className="w-full p-3 border rounded-xl" value={admitForm.mother} onChange={e => setAdmitForm({...admitForm, mother: e.target.value})} /></div>
+                   <div><label className="text-[10px] font-black text-emerald-700">CLASS</label><input type="text" className="w-full p-3 border rounded-xl" value={admitForm.class} onChange={e => setAdmitForm({...admitForm, class: e.target.value})} /></div>
+                   <div><label className="text-[10px] font-black text-emerald-700">AGE</label><input type="text" className="w-full p-3 border rounded-xl" value={admitForm.age} onChange={e => setAdmitForm({...admitForm, age: e.target.value})} /></div>
+                </div>
+                <button onClick={handleSaveAdmit} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-emerald-700 active:scale-95 transition-all">SAVE & REGISTER STUDENT</button>
+              </div>
+            )}
+
+            {!loading && adminTab === 'result' && (
+              <div className="space-y-6">
+                 <div className="bg-emerald-50 p-6 rounded-2xl border-2 border-emerald-100 mb-6">
+                    <label className="text-[10px] font-black text-emerald-700">SELECT STUDENT BY ROLL NO</label>
+                    <input type="text" className="w-full p-4 border rounded-xl font-black text-3xl bg-white focus:ring-2 ring-emerald-400 outline-none max-w-xs" 
+                       value={resultForm.roll} 
+                       onChange={e => setResultForm({...resultForm, roll: e.target.value})} 
+                       onBlur={e => {
+                         const existing = resultDb[e.target.value];
+                         if(existing) setResultForm(existing);
+                         else if(admitDb[e.target.value]) showMsg(`Adding results for ${admitDb[e.target.value].name}`);
+                       }} />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1,2,3,4,5,6].map(i => (
+                      <div key={i} className="flex gap-4 items-center bg-white p-4 rounded-xl border shadow-sm">
+                        <input type="text" className="flex-grow font-bold text-slate-400 italic bg-transparent" value={resultForm[`s${i}`]} onChange={e => setResultForm({...resultForm, [`s${i}`]: e.target.value})} />
+                        <div className="flex flex-col items-center">
+                          <label className="text-[8px] font-bold text-slate-300">MARKS / 100</label>
+                          <input type="number" className="w-20 p-2 bg-emerald-50 rounded-lg font-black text-center text-xl text-emerald-800" value={resultForm[`m${i}`]} onChange={e => setResultForm({...resultForm, [`m${i}`]: e.target.value})} />
+                        </div>
+                      </div>
+                    ))}
+                 </div>
+                 <button onClick={handleSaveResult} className="w-full bg-emerald-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-emerald-800 active:scale-95 transition-all">UPLOAD MARKS TO CLOUD</button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
         
-        .admit-card {
-            background: white;
-            border: 8px double var(--primary);
-            padding: 25px;
-            position: relative;
-            max-width: 600px;
-            margin: auto;
-            background-image: radial-gradient(circle, #f0fdf4 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
-
-        .result-sheet {
-            background: #fff;
-            border: 2px solid #000;
-            padding: 40px;
-            position: relative;
-            max-width: 750px;
-            margin: auto;
-            box-shadow: 0 0 50px rgba(0,0,0,0.1);
-        }
-
-        .result-inner-border {
-            border: 1px solid #000;
-            padding: 20px;
-            height: 100%;
-        }
-
-        .watermark {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 5rem; opacity: 0.04; font-weight: 900; color: var(--primary); pointer-events: none; z-index: 0;
-            white-space: nowrap;
-        }
-
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white !; padding: 0; }
-            .print-area { box-shadow: none !important; border: 1px solid #000 !important; width: 100% !important; margin: 0 !important; }
-        }
-
-        .stamp {
-            border: 3px double #d1d5db;
-            color: #d1d5db;
-            font-size: 10px;
-            font-weight: bold;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            transform: rotate(-15deg);
-        }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        function App() {
-            const [page, setPage] = useState('home');
-            const [rollSearch, setRollSearch] = useState('');
-            const [currentStudent, setCurrentStudent] = useState(null);
-            const [adminPin, setAdminPin] = useState('');
-            const [isAuthorized, setIsAuthorized] = useState(false);
-            const [adminTab, setAdminTab] = useState('admit');
-
-            // --- DATABASE LOGIC (STRICT) ---
-            const [admitDb, setAdmitDb] = useState(() => {
-                const saved = localStorage.getItem('GHAZALI_ADMIT_V4');
-                return saved ? JSON.parse(saved) : {};
-            });
-
-            const [resultDb, setResultDb] = useState(() => {
-                const saved = localStorage.getItem('GHAZALI_RESULT_V4');
-                return saved ? JSON.parse(saved) : {};
-            });
-
-            // Auto-save whenever DB changes
-            useEffect(() => {
-                localStorage.setItem('GHAZALI_ADMIT_V4', JSON.stringify(admitDb));
-            }, [admitDb]);
-
-            useEffect(() => {
-                localStorage.setItem('GHAZALI_RESULT_V4', JSON.stringify(resultDb));
-            }, [resultDb]);
-
-            // Form States
-            const [admitForm, setAdmitForm] = useState({ roll: '', name: '', father: '', class: '', center: 'Al Ghazali Main Campus', examDate: '2026-03-20', examTime: '09:00 AM' });
-            const [resultForm, setResultForm] = useState({ roll: '', s1: 'Quran Kareem', m1: '', s2: 'Hadith Studies', m2: '', s3: 'Islamic Fiqh', m3: '', s4: 'Arabic Lang', m4: '', s5: 'Urdu Lit', m5: '', s6: 'English', m6: '' });
-
-            const downloadPDF = (id, filename) => {
-                const element = document.getElementById(id);
-                const opt = {
-                    margin: 0.5,
-                    filename: filename + '.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-                };
-                html2pdf().set(opt).from(element).save();
-            };
-
-            const handleSearch = (type) => {
-                const roll = rollSearch.trim();
-                if (!roll) { alert("Please enter Roll Number"); return; }
-                
-                const aData = admitDb[roll];
-                const rData = resultDb[roll];
-
-                if (type === 'admit') {
-                    if (aData) { setCurrentStudent(aData); setPage('admit-view'); }
-                    else alert("Roll Number " + roll + " ka Admit Card nahi mila!");
-                } else {
-                    if (aData && rData) { 
-                        setCurrentStudent({ ...aData, ...rData }); 
-                        setPage('result-view'); 
-                    }
-                    else if (!aData) alert("Pehle is Roll Number ka Admit Card banayein!");
-                    else alert("Is student ka Result abhi upload nahi hua.");
-                }
-            };
-
-            const calculate = (stu) => {
-                const marks = [stu.m1, stu.m2, stu.m3, stu.m4, stu.m5, stu.m6].map(m => Number(m) || 0);
-                const total = marks.reduce((a, b) => a + b, 0);
-                const perc = ((total / 600) * 100).toFixed(2);
-                let grade = 'F';
-                if(perc >= 80) grade = 'A+';
-                else if(perc >= 70) grade = 'A';
-                else if(perc >= 60) grade = 'B';
-                else if(perc >= 50) grade = 'C';
-                else if(perc >= 33) grade = 'D';
-                return { total, perc, status: perc >= 33 ? 'PASSED' : 'FAILED', grade };
-            };
-
-            const saveAdmit = () => {
-                if(!admitForm.roll) { alert("Roll Number zaruri hai!"); return; }
-                setAdmitDb(prev => ({ ...prev, [admitForm.roll]: admitForm }));
-                alert("Admit Card Saved Successfully!");
-            };
-
-            const saveResult = () => {
-                if(!resultForm.roll) { alert("Roll Number zaruri hai!"); return; }
-                setResultDb(prev => ({ ...prev, [resultForm.roll]: resultForm }));
-                alert("Marksheet Updated Successfully!");
-            };
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    {/* Navbar */}
-                    <nav className="bg-[#004d3d] text-white p-4 flex justify-between items-center no-print shadow-xl">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setPage('home')}>
-                            <div className="bg-white text-[#004d3d] w-10 h-10 rounded-full flex items-center justify-center font-black shadow-inner">G</div>
-                            <span className="font-bold text-lg college-font italic">Al Ghazali Academy</span>
-                        </div>
-                        <button onClick={() => setPage('login')} className="text-[10px] bg-white text-[#004d3d] px-4 py-1.5 rounded-full font-black uppercase tracking-tighter hover:bg-gray-200">Staff Login</button>
-                    </nav>
-
-                    {/* Home Page */}
-                    {page === 'home' && (
-                        <div className="flex-grow flex items-center justify-center p-6">
-                            <div className="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-md text-center border-t-[15px] border-[#004d3d]">
-                                <h2 className="text-2xl font-black text-gray-800 mb-8 uppercase college-font">Online Portal 2026</h2>
-                                <div className="relative mb-8">
-                                    <input 
-                                        type="text" placeholder="Roll Number" 
-                                        className="w-full p-6 bg-gray-50 border-4 border-gray-100 rounded-3xl text-center text-4xl font-black focus:border-[#c5a059] outline-none text-[#004d3d] transition-all"
-                                        value={rollSearch}
-                                        onChange={(e) => setRollSearch(e.target.value)}
-                                    />
-                                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-white px-4 text-[10px] font-bold text-gray-400">ENTER ROLL NO</div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <button onClick={() => handleSearch('admit')} className="bg-[#004d3d] text-white py-5 rounded-2xl font-black shadow-xl hover:bg-black transition-all text-lg">🎫 DOWNLOAD ADMIT CARD</button>
-                                    <button onClick={() => handleSearch('result')} className="bg-[#c5a059] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90 transition-all">📜 CHECK MARKSHEET</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Admit Card View */}
-                    {page === 'admit-view' && currentStudent && (
-                        <div className="p-4 flex flex-col items-center">
-                            <div className="no-print flex gap-2 mb-4">
-                                <button onClick={() => setPage('home')} className="bg-white px-6 py-2 rounded-full shadow font-bold text-sm">← Back</button>
-                                <button onClick={() => downloadPDF('admit-area', 'Admit_Card_'+currentStudent.roll)} className="bg-blue-600 text-white px-6 py-2 rounded-full shadow font-bold text-sm">⬇ Download PDF</button>
-                            </div>
-                            <div id="admit-area" className="admit-card print-area">
-                                <div className="watermark">AL GHAZALI</div>
-                                <div className="text-center border-b-4 border-[#004d3d] pb-4 mb-6">
-                                    <h1 className="college-font text-3xl font-black text-[#004d3d]">AL GHAZALI ACADEMY</h1>
-                                    <p className="text-[10px] font-bold tracking-[4px] uppercase text-gray-500">Academic Session 2025-26</p>
-                                    <div className="mt-4 bg-[#004d3d] text-white inline-block px-8 py-1.5 text-xs font-black rounded-lg">OFFICIAL ADMIT CARD</div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-y-6 text-[11px] font-bold uppercase">
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">NAME OF STUDENT</span> {currentStudent.name}</div>
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">ROLL NUMBER</span> {currentStudent.roll}</div>
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">FATHER'S NAME</span> {currentStudent.father}</div>
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">CLASS / GRADE</span> {currentStudent.class}</div>
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">EXAMINATION DATE</span> {currentStudent.examDate}</div>
-                                    <div className="flex flex-col"><span className="text-gray-400 text-[8px]">REPORTING TIME</span> {currentStudent.examTime}</div>
-                                    <div className="col-span-2 flex flex-col"><span className="text-gray-400 text-[8px]">EXAMINATION VENUE</span> {currentStudent.center}</div>
-                                </div>
-                                <div className="mt-12 flex justify-between items-center">
-                                    <div className="stamp uppercase">GHAZALI<br/>OFFICIAL</div>
-                                    <div className="text-center">
-                                        <div className="border-t-2 border-black w-32 pt-1 font-black text-[9px] uppercase">Exam Controller</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Result Marksheet View */}
-                    {page === 'result-view' && currentStudent && (() => {
-                        const r = calculate(currentStudent);
-                        return (
-                            <div className="p-4 flex flex-col items-center">
-                                <div className="no-print flex gap-2 mb-4">
-                                    <button onClick={() => setPage('home')} className="bg-white px-6 py-2 rounded-full shadow font-bold text-sm">← Back</button>
-                                    <button onClick={() => downloadPDF('result-area', 'Result_'+currentStudent.roll)} className="bg-green-600 text-white px-6 py-2 rounded-full shadow font-bold text-sm">⬇ Download PDF</button>
-                                </div>
-                                <div id="result-area" className="result-sheet print-area">
-                                    <div className="result-inner-border">
-                                        <div className="watermark">CERTIFIED</div>
-                                        <div className="text-center mb-8">
-                                            <h2 className="college-font text-4xl font-black text-[#004d3d] leading-none">AL GHAZALI ACADEMY</h2>
-                                            <p className="text-[10px] font-black tracking-widest text-gray-500 mt-2">REGD. ISLAMIC GIRLS BOARDING SCHOOL</p>
-                                            <div className="h-1 w-48 bg-[#c5a059] mx-auto my-4"></div>
-                                            <h3 className="font-bold text-lg classic-font italic underline decoration-[#c5a059]">ANNUAL EXAMINATION STATEMENT OF MARKS</h3>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-3 gap-4 mb-8 text-[11px] font-bold border p-4 bg-gray-50 rounded">
-                                            <div><span className="text-gray-400 block text-[8px]">STUDENT NAME</span> {currentStudent.name}</div>
-                                            <div><span className="text-gray-400 block text-[8px]">ROLL NUMBER</span> {currentStudent.roll}</div>
-                                            <div><span className="text-gray-400 block text-[8px]">FATHER'S NAME</span> {currentStudent.father}</div>
-                                        </div>
-
-                                        <table className="w-full mb-10 border-2 border-black">
-                                            <thead>
-                                                <tr className="bg-gray-800 text-white text-[10px] uppercase">
-                                                    <th className="p-3 border text-left">SUBJECT DESCRIPTION</th>
-                                                    <th className="p-3 border w-24">MAX MARKS</th>
-                                                    <th className="p-3 border w-24">OBTAINED</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="font-bold text-sm">
-                                                {[1,2,3,4,5,6].map(i => (
-                                                    <tr key={i} className="border-b border-black">
-                                                        <td className="p-3 border italic text-gray-700">{currentStudent[`s${i}`]}</td>
-                                                        <td className="p-3 border text-center text-gray-400">100</td>
-                                                        <td className="p-3 border text-center">{currentStudent[`m${i}`] || '0'}</td>
-                                                    </tr>
-                                                ))}
-                                                <tr className="bg-gray-100 text-xl font-black">
-                                                    <td className="p-4 text-right border uppercase">Total Aggregate</td>
-                                                    <td className="p-4 text-center border">600</td>
-                                                    <td className="p-4 text-center border bg-white">{r.total}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-
-                                        <div className="grid grid-cols-3 gap-6 text-center border-t-4 border-[#004d3d] pt-8">
-                                            <div>
-                                                <p className="text-[9px] font-bold text-gray-400 uppercase">PERCENTAGE</p>
-                                                <p className="text-3xl font-black text-[#004d3d]">{r.perc}%</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] font-bold text-gray-400 uppercase">GRADE</p>
-                                                <p className="text-3xl font-black text-[#c5a059]">{r.grade}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[9px] font-bold text-gray-400 uppercase">RESULT</p>
-                                                <p className={`text-3xl font-black ${r.status === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>{r.status}</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-16 flex justify-between px-4">
-                                            <div className="text-center">
-                                                <div className="h-0.5 bg-gray-400 w-32 mb-1"></div>
-                                                <p className="text-[9px] font-bold uppercase italic">Class Teacher</p>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="h-0.5 bg-gray-400 w-32 mb-1"></div>
-                                                <p className="text-[9px] font-bold uppercase italic">Principal Signature</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    }
