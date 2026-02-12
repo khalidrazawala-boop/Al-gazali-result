@@ -1,243 +1,364 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Ghazali Academy - Professional Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;700;900&display=swap');
-        
-        body { font-family: 'Montserrat', sans-serif; }
-        .academy-title { font-family: 'Cinzel', serif; }
-        
-        @media print { 
-            .no-print { display: none !important; } 
-            body { background: white; padding: 0; }
-            .print-container { box-shadow: none !important; border: 4px solid #004d3d !important; }
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { User, GraduationCap, FileText, Plus, Trash2, Printer, Lock, LogOut, CheckCircle, Search, ShieldCheck, AlertCircle } from 'lucide-react';
+
+// Firebase configuration
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-ghazali-academy';
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [passInput, setPassInput] = useState('');
+  const [view, setView] = useState('home'); 
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [printMode, setPrintMode] = useState('result'); 
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [searchRoll, setSearchRoll] = useState('');
+
+  // Form State
+  const [formData, setFormData] = useState({
+    studentName: '',
+    fatherName: '',
+    motherName: '',
+    className: '',
+    age: '',
+    gender: 'Female',
+    rollNo: '',
+    examDate: '',
+    subjects: [
+      { name: 'Holy Quran', total: 100, obtained: '' },
+      { name: 'Urdu', total: 100, obtained: '' },
+      { name: 'Islamic Studies', total: 100, obtained: '' },
+      { name: 'Mathematics', total: 100, obtained: '' },
+      { name: 'English', total: 100, obtained: '' },
+      { name: 'Science', total: 100, obtained: '' },
+    ]
+  });
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-    </style>
-</head>
-<body class="bg-slate-100">
-    <div id="root"></div>
+      } catch (error) {
+        console.error("Authentication Error:", error);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+  useEffect(() => {
+    if (!user) return;
+    // Follow Rule 1: Public path
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'student_records');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRecords(data);
+    }, (error) => {
+      console.error("Firestore Listen Error:", error);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
-        function App() {
-            const [page, setPage] = useState('home');
-            const [rollSearch, setRollSearch] = useState('');
-            const [status, setStatus] = useState('');
-            const [viewMode, setViewMode] = useState('result'); 
-            
-            const [students, setStudents] = useState(() => {
-                const saved = localStorage.getItem('ghazali_v8_data');
-                return saved ? JSON.parse(saved) : {};
-            });
+  const handleAdminLogin = () => {
+    if (passInput === '1234') {
+      setIsAdmin(true);
+      setIsLoggingIn(false);
+      setPassInput('');
+    } else {
+      alert('غلط پاس ورڈ درج کیا گیا ہے!');
+    }
+  };
 
-            useEffect(() => {
-                localStorage.setItem('ghazali_v8_data', JSON.stringify(students));
-            }, [students]);
+  const searchByRoll = () => {
+    const found = records.find(r => r.rollNo.trim() === searchRoll.trim());
+    if (found) {
+      setSelectedRecord(found);
+      setPrintMode('result');
+    } else {
+      alert('اس رول نمبر کا کوئی ریکارڈ نہیں ملا۔');
+    }
+  };
 
-            const [formData, setFormData] = useState({
-                roll: '', name: '', father: '', mother: '', class: 'ULA', age: '',
-                s1: 'Quran Kareem', m1: '',
-                s2: 'Hadith Studies', m2: '',
-                s3: 'Islamic Fiqh', m3: '',
-                s4: 'Arabic Lang', m4: '',
-                s5: 'Urdu Lit', m5: '',
-                s6: 'English', m6: ''
-            });
+  const handleSubjectChange = (index, field, value) => {
+    const newSubjects = [...formData.subjects];
+    newSubjects[index][field] = value;
+    setFormData({ ...formData, subjects: newSubjects });
+  };
 
-            const showMsg = (m) => {
-                setStatus(m);
-                setTimeout(() => setStatus(''), 4000);
-            };
+  const saveRecord = async () => {
+    if (!user) {
+      alert('براہ کرم تھوڑی دیر انتظار کریں، سسٹم ابھی لوڈ ہو رہا ہے...');
+      return;
+    }
+    
+    if (!formData.studentName || !formData.rollNo) {
+      alert('Please enter Student Name and Roll Number.');
+      return;
+    }
 
-            const handleSave = () => {
-                if(!formData.roll) return showMsg("Roll Number likhna zaruri hai!");
-                setStudents(prev => ({ ...prev, [formData.roll]: formData }));
-                showMsg("Data Kamyabi se Save ho gaya!");
-            };
+    setIsSaving(true);
+    try {
+      // Follow Rule 1: Correct collection path
+      const targetCol = collection(db, 'artifacts', appId, 'public', 'data', 'student_records');
+      
+      await addDoc(targetCol, {
+        ...formData,
+        timestamp: serverTimestamp(),
+        createdAt: new Date().toISOString()
+      });
 
-            const currentStudent = students[rollSearch];
-            const calculateTotal = (s) => [s.m1, s.m2, s.m3, s.m4, s.m5, s.m6].reduce((a, b) => a + (Number(b) || 0), 0);
+      alert('ماشاءاللہ! ریکارڈ کامیابی سے محفوظ کر لیا گیا ہے۔');
+      setView('records');
+      setFormData({
+        studentName: '', fatherName: '', motherName: '', className: '', age: '', gender: 'Female', rollNo: '', examDate: '',
+        subjects: formData.subjects.map(s => ({ ...s, obtained: '' }))
+      });
+    } catch (e) {
+      console.error("Save Error:", e);
+      alert('محفوظ کرنے میں کچھ مسئلہ پیش آیا۔ دوبارہ کوشش کریں۔');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-            return (
-                <div className="min-h-screen pb-10">
-                    {status && (
-                        <div className="fixed top-0 left-0 right-0 bg-emerald-600 text-white p-4 text-center font-bold z-50 shadow-xl">
-                            {status}
-                        </div>
-                    )}
-                    
-                    {/* Navigation with Logo Style */}
-                    <nav className="bg-[#004d3d] p-4 text-white flex justify-between items-center shadow-2xl no-print">
-                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setPage('home')}>
-                            <div className="bg-white p-1.5 rounded-full shadow-inner">
-                                <svg width="28" height="28" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
-                            </div>
-                            <div>
-                                <h1 className="academy-title text-xl font-black tracking-tighter uppercase leading-none">Al Ghazali</h1>
-                                <p className="text-[8px] font-bold tracking-[0.3em] text-emerald-300">GIRLS ACADEMY</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setPage('admin')} className="bg-emerald-500 hover:bg-emerald-400 px-5 py-2 rounded-xl font-black text-[10px] shadow-lg transition-all">STAFF LOGIN</button>
-                    </nav>
+  const deleteRecord = async (id) => {
+    if (!user) return;
+    if (window.confirm('کیا آپ واقعی یہ ریکارڈ مٹانا چاہتے ہیں؟')) {
+      try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'student_records', id));
+      } catch (e) {
+        alert('مٹانے میں مسئلہ ہوا۔');
+      }
+    }
+  };
 
-                    <main className="p-4 max-w-2xl mx-auto">
-                        {page === 'home' && (
-                            <div className="mt-20 bg-white p-10 rounded-[40px] shadow-2xl border-b-[10px] border-emerald-800 text-center relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-2 bg-emerald-600"></div>
-                                <h2 className="text-3xl font-black text-[#004d3d] mb-2 uppercase academy-title">Welcome Portal</h2>
-                                <p className="text-slate-400 text-xs font-bold mb-8 italic">Enter Roll Number to Access Documents</p>
-                                
-                                <input 
-                                    type="text" placeholder="Roll No" 
-                                    className="w-full p-5 border-2 border-slate-100 rounded-3xl text-center text-4xl font-black mb-8 outline-none focus:border-emerald-500 shadow-inner bg-slate-50"
-                                    value={rollSearch} onChange={e => setRollSearch(e.target.value)}
-                                />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button 
-                                        onClick={() => { if(students[rollSearch]) { setPage('view'); setViewMode('result'); } else showMsg("Roll No Not Found!"); }}
-                                        className="bg-emerald-700 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-800 shadow-xl transform active:scale-95 transition-all"
-                                    >
-                                        VIEW RESULT
-                                    </button>
-                                    <button 
-                                        onClick={() => { if(students[rollSearch]) { setPage('view'); setViewMode('admit'); } else showMsg("Roll No Not Found!"); }}
-                                        className="bg-slate-800 text-white py-5 rounded-2xl font-black text-lg hover:bg-slate-900 shadow-xl transform active:scale-95 transition-all"
-                                    >
-                                        ADMIT CARD
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+  const calculateTotal = (subs) => subs.reduce((acc, curr) => acc + (Number(curr.obtained) || 0), 0);
 
-                        {page === 'view' && currentStudent && (
-                            <div className="flex flex-col gap-6 mt-4">
-                                <div className="no-print flex gap-2">
-                                    <button onClick={() => setPage('home')} className="bg-white px-6 py-3 rounded-2xl shadow-lg font-black text-slate-600 hover:bg-slate-50">← BACK</button>
-                                    <button onClick={() => window.print()} className="flex-grow bg-[#004d3d] text-white py-3 rounded-2xl shadow-xl font-black uppercase tracking-widest hover:bg-emerald-900 transition-all">Download / Print PDF</button>
-                                </div>
-                                
-                                <div className="print-container bg-white p-10 border-[14px] border-double border-[#004d3d] shadow-2xl relative">
-                                    {/* Header Design */}
-                                    <div className="text-center mb-8 pb-6 border-b-2 border-slate-100">
-                                        <div className="flex justify-center mb-3">
-                                            <svg width="40" height="40" viewBox="0 0 24 24" fill="#004d3d"><path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"/></svg>
-                                        </div>
-                                        <h1 className="academy-title text-[#004d3d] text-3xl font-black uppercase leading-tight tracking-tighter">Al Ghazali Online Girls Academy</h1>
-                                        <div className="flex items-center justify-center gap-4 mt-2">
-                                            <div className="h-px bg-emerald-200 w-16"></div>
-                                            <p className="font-black text-emerald-600 text-[10px] tracking-[0.4em] uppercase">
-                                                {viewMode === 'result' ? 'Annual Result 2025' : 'Examination Admit Card'}
-                                            </p>
-                                            <div className="h-px bg-emerald-200 w-16"></div>
-                                        </div>
-                                    </div>
+  if (loading) return <div className="flex flex-col items-center justify-center h-screen font-urdu text-purple-700">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mb-4"></div>
+    <div className="text-2xl">سسٹم لوڈ ہو رہا ہے، براہ کرم انتظار کریں...</div>
+  </div>;
 
-                                    {viewMode === 'result' ? (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-[12px] mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>NAME:</span> <span className="uppercase text-[#004d3d]">{currentStudent.name}</span></div>
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>ROLL NO:</span> <span>{currentStudent.roll}</span></div>
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>FATHER:</span> <span className="uppercase">{currentStudent.father}</span></div>
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>MOTHER:</span> <span className="uppercase">{currentStudent.mother}</span></div>
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>CLASS:</span> <span className="uppercase">{currentStudent.class}</span></div>
-                                                <div className="flex justify-between border-b pb-1 font-bold"><span>AGE:</span> <span>{currentStudent.age}</span></div>
-                                            </div>
+  return (
+    <div className="min-h-screen bg-slate-50 font-urdu pb-10" dir="rtl">
+      {/* Header */}
+      <header className="bg-white border-b-4 border-purple-700 shadow-md p-6 no-print">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex justify-center items-center gap-4 mb-2">
+            <div className="bg-purple-700 p-3 rounded-2xl shadow-lg rotate-3">
+              <GraduationCap className="text-white w-10 h-10" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-purple-900 tracking-tight" style={{ fontFamily: 'serif' }}>
+              AL GHAZALI <span className="text-pink-600 italic">ONLINE GIRLS ACADEMY</span>
+            </h1>
+          </div>
+          <p className="text-lg text-purple-600 font-bold border-t border-purple-100 pt-2 inline-block px-10">
+            Empowering Women Through Quality Education
+          </p>
+        </div>
+      </header>
 
-                                            <table className="w-full border-2 border-[#004d3d] rounded-lg overflow-hidden">
-                                                <thead className="bg-[#004d3d] text-white text-[10px] uppercase font-black">
-                                                    <tr>
-                                                        <th className="p-3 border border-emerald-800">Sr.</th>
-                                                        <th className="p-3 border border-emerald-800 text-left">Subjects</th>
-                                                        <th className="p-3 border border-emerald-800">Total</th>
-                                                        <th className="p-3 border border-emerald-800">Obtained</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="font-bold text-center">
-                                                    {[1,2,3,4,5,6].map(i => (
-                                                        <tr key={i} className="border-b hover:bg-slate-50">
-                                                            <td className="p-3 border-r text-slate-300 italic">{i}</td>
-                                                            <td className="p-3 border-r text-left italic font-bold">{currentStudent[`s${i}`]}</td>
-                                                            <td className="p-3 border-r text-slate-300">100</td>
-                                                            <td className="p-3 bg-emerald-50 text-emerald-900 text-xl font-black">{currentStudent[`m${i}`] || '0'}</td>
-                                                        </tr>
-                                                    ))}
-                                                    <tr className="bg-slate-900 text-white">
-                                                        <td colSpan="2" className="p-4 text-right uppercase font-black tracking-widest">Grand Total</td>
-                                                        <td className="p-4 border-r border-slate-700">600</td>
-                                                        <td className="p-4 text-emerald-400 text-3xl font-black">{calculateTotal(currentStudent)}</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </>
-                                    ) : (
-                                        /* Admit Card Design */
-                                        <div className="border-4 border-double border-slate-900 p-6 rounded-lg bg-slate-50 relative">
-                                            <div className="flex gap-8 items-start">
-                                                <div className="flex-grow space-y-4">
-                                                    <div className="flex items-end gap-4 border-b-2 border-slate-200 pb-2">
-                                                        <span className="text-[10px] font-black w-24 text-slate-400">ROLL NUMBER:</span>
-                                                        <span className="text-3xl font-black text-[#004d3d]">{currentStudent.roll}</span>
-                                                    </div>
-                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
-                                                        <span className="text-[10px] font-black w-24 text-slate-400">NAME:</span>
-                                                        <span className="text-lg font-bold uppercase">{currentStudent.name}</span>
-                                                    </div>
-                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
-                                                        <span className="text-[10px] font-black w-24 text-slate-400">FATHER:</span>
-                                                        <span className="text-lg font-bold uppercase">{currentStudent.father}</span>
-                                                    </div>
-                                                    <div className="flex items-end gap-4 border-b border-slate-200 pb-2">
-                                                        <span className="text-[10px] font-black w-24 text-slate-400">CLASS:</span>
-                                                        <span className="text-lg font-black uppercase text-emerald-700">{currentStudent.class}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="w-36 h-40 border-4 border-dashed border-slate-300 flex items-center justify-center text-center p-4 bg-white rounded-xl shadow-inner">
-                                                    <span className="text-[9px] font-black text-slate-300 uppercase leading-tight">Attach Student Photo Here</span>
-                                                </div>
-                                            </div>
-                                            <div className="mt-16 flex justify-between px-4">
-                                                <div className="text-center border-t-2 border-slate-900 pt-2 w-32 font-black text-[10px] uppercase">Candidate Sign</div>
-                                                <div className="text-center border-t-2 border-slate-900 pt-2 w-32 font-black text-[10px] uppercase">Principal Sign</div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-between mt-12 text-[10px] font-black text-slate-300 px-4 uppercase tracking-[0.2em]">
-                                        <div className="text-center"><div className="w-24 h-px bg-slate-100 mb-2"></div>Controller</div>
-                                        <div className="text-center italic opacity-10">Academy Seal</div>
-                                        <div className="text-center"><div className="w-24 h-px bg-slate-100 mb-2"></div>Authorized</div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {page === 'admin' && (
-                            <div className="bg-white p-8 rounded-[40px] shadow-2xl border-t-[10px] border-emerald-600">
-                                <div className="flex justify-between items-center mb-10 pb-4 border-b border-slate-100">
-                                    <h2 className="text-2xl font-black text-emerald-800 uppercase academy-title">Admin Dashboard</h2>
-                                    <button onClick={() => setPage('home')} className="bg-slate-900 text-white px-6 py-2 rounded-full text-[10px] font-bold">EXIT</button>
-                                </div>
-                                
-                                <div className="space-y-8">
-                                    <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-                                        <label className="text-[10px] font-black block mb-2 text-emerald-800 uppercase tracking-widest">Enter Roll No to Add/Edit</label>
-                                        <input type="text" className="w-full p-4 border-2 border-emerald-200 rounded-2xl font-black text-3xl mb-6 outline-none focus:ring-4 ring-emerald-100" value={formData.roll} 
-                                            onChange={e => setFormData({...formData, roll: e.target.value})} 
-                                            onBlur={e => { if(students[e.target.value]) setFormData(students[e.target.value]); }} 
-                                        />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">NAME</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">FATHER</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.father} onChange={e => setFormData({...formData, father: e.target.value})} /></div>
-                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">MOTHER</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.mother} onChange={e => setFormData({...formData, mother: e.target.value})} /></div>
-                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">CLASS</label><input type="text" className="w-full p-3 border rounded-xl font-bold" value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} /></div>
-                                            <div className="space-y-1"><label className="text-[9px] font-black pl-2">AGE</label><input type="text" className="w-full p-3 border rounded-xl" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} /></div>
-                                        </div>
+      <div className="max-w-6xl mx-auto mt-8 p-4">
         
+        {/* Admin Login Modal */}
+        {isLoggingIn && (
+          <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 no-print">
+            <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-fade-in border-t-8 border-purple-700">
+              <div className="text-center mb-6">
+                <Lock className="mx-auto text-purple-700 mb-2" size={40} />
+                <h2 className="text-2xl font-bold">ایڈمن لاگ ان</h2>
+              </div>
+              <input 
+                type="password" 
+                className="w-full p-4 border-2 border-gray-100 rounded-xl mb-4 text-center text-2xl tracking-widest outline-none focus:border-purple-500" 
+                placeholder="****"
+                value={passInput}
+                onChange={(e) => setPassInput(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button onClick={handleAdminLogin} className="flex-1 bg-purple-700 text-white py-3 rounded-xl font-bold">داخل ہوں</button>
+                <button onClick={() => setIsLoggingIn(false)} className="px-4 py-3 bg-gray-100 rounded-xl font-urdu">کینسل</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!selectedRecord && (
+          <div className="no-print">
+            {/* Search and Navigation Bar */}
+            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm mb-8 gap-4 border border-purple-50">
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="رول نمبر سے تلاش کریں..." 
+                    className="w-full md:w-72 pr-12 pl-4 py-3 border-2 border-purple-50 rounded-2xl outline-none focus:border-purple-300 transition text-right font-bold"
+                    value={searchRoll}
+                    onChange={(e) => setSearchRoll(e.target.value)}
+                  />
+                  <Search className="absolute right-4 top-3.5 text-purple-300" size={20} />
+                </div>
+                <button onClick={searchByRoll} className="bg-purple-700 text-white px-6 py-3 rounded-2xl font-bold hover:bg-purple-800 transition">تلاش کریں</button>
+              </div>
+
+              <div className="flex gap-3 w-full md:w-auto">
+                {isAdmin ? (
+                  <>
+                    <button onClick={() => setView('create')} className={`flex-1 md:flex-none px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-md transition ${view === 'create' ? 'bg-green-700 text-white' : 'bg-green-100 text-green-700 border border-green-200'}`}><Plus size={20}/> نیا اندراج</button>
+                    <button onClick={() => setView('records')} className={`flex-1 md:flex-none px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-md transition ${view === 'records' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}><FileText size={20}/> ریکارڈز</button>
+                    <button onClick={() => setIsAdmin(false)} className="bg-red-50 text-red-600 p-3 rounded-2xl border border-red-100" title="لاگ آؤٹ"><LogOut size={20}/></button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsLoggingIn(true)} className="w-full md:w-auto bg-purple-100 text-purple-700 px-8 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold border border-purple-200 shadow-sm hover:bg-purple-200 transition"><ShieldCheck size={20}/> ایڈمن پینل</button>
+                )}
+              </div>
+            </div>
+
+            {/* Entry Form */}
+            {view === 'create' && isAdmin && (
+              <div className="bg-white rounded-3xl shadow-xl p-8 animate-fade-in border-2 border-purple-50 overflow-hidden relative">
+                {isSaving && (
+                  <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center backdrop-blur-sm">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mb-2"></div>
+                      <p className="font-bold text-green-700">ریکارڈ محفوظ ہو رہا ہے...</p>
+                    </div>
+                  </div>
+                )}
+                
+                <h2 className="text-2xl font-bold mb-8 text-purple-900 flex items-center gap-2">
+                  <span className="w-2 h-8 bg-purple-700 rounded-full"></span>
+                  Student Data Entry Form
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-left" dir="ltr">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Student Name</label>
+                    <input className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition" value={formData.studentName} onChange={(e) => setFormData({...formData, studentName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Father's Name</label>
+                    <input className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition" value={formData.fatherName} onChange={(e) => setFormData({...formData, fatherName: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Roll Number</label>
+                    <input className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition font-bold text-purple-800" value={formData.rollNo} onChange={(e) => setFormData({...formData, rollNo: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Class</label>
+                    <input className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition" value={formData.className} onChange={(e) => setFormData({...formData, className: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Age</label>
+                    <input className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition" value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black uppercase text-gray-400 ml-1">Exam Date</label>
+                    <input type="date" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border-2 border-transparent focus:border-purple-200 focus:bg-white transition" value={formData.examDate} onChange={(e) => setFormData({...formData, examDate: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-gray-100 mb-8" dir="ltr">
+                  <table className="w-full text-left">
+                    <thead className="bg-purple-700 text-white">
+                      <tr>
+                        <th className="p-4">Subject Name</th>
+                        <th className="p-4 w-32 text-center">Total</th>
+                        <th className="p-4 w-32 text-center">Obtained</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {formData.subjects.map((s, idx) => (
+                        <tr key={idx} className="border-b border-gray-50">
+                          <td className="p-2"><input className="w-full p-3 outline-none focus:bg-purple-50" value={s.name} onChange={(e) => handleSubjectChange(idx, 'name', e.target.value)} /></td>
+                          <td className="p-2 text-center font-bold text-gray-400">100</td>
+                          <td className="p-2"><input type="number" className="w-full p-3 bg-slate-50 rounded-xl outline-none text-center font-bold text-purple-900 border border-transparent focus:border-purple-200 focus:bg-white" value={s.obtained} onChange={(e) => handleSubjectChange(idx, 'obtained', e.target.value)} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end gap-4 border-t pt-8">
+                  <button onClick={() => setView('home')} className="px-8 py-3 rounded-2xl bg-gray-100 font-bold hover:bg-gray-200 transition">Cancel</button>
+                  <button 
+                    onClick={saveRecord} 
+                    disabled={isSaving}
+                    className="px-10 py-3 rounded-2xl bg-green-600 text-white font-bold flex items-center gap-2 shadow-lg hover:bg-green-700 transition disabled:opacity-50"
+                  >
+                    {isSaving ? 'Saving...' : <><CheckCircle size={20}/> Save Record</>}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Records List View */}
+            {view === 'records' && isAdmin && (
+              <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in border border-purple-100">
+                <div className="p-6 bg-purple-700 text-white flex justify-between items-center">
+                   <h2 className="text-2xl font-bold">Students Database</h2>
+                   <div className="text-sm bg-white/20 px-4 py-1 rounded-full">Total: {records.length}</div>
+                </div>
+                <div className="overflow-x-auto">
+                   <table className="w-full text-left" dir="ltr">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="p-5 text-purple-700 text-xs font-black uppercase tracking-wider">Roll No</th>
+                          <th className="p-5 text-purple-700 text-xs font-black uppercase tracking-wider">Student Name</th>
+                          <th className="p-5 text-purple-700 text-xs font-black uppercase tracking-wider">Class</th>
+                          <th className="p-5 text-right text-xs font-black uppercase tracking-wider">View / Manage</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {records.length === 0 ? (
+                          <tr><td colSpan="4" className="p-20 text-center text-gray-400 italic font-urdu">کوئی ریکارڈ موجود نہیں ہے۔ نیا اندراج کریں۔</td></tr>
+                        ) : (
+                          records.map(r => (
+                            <tr key={r.id} className="hover:bg-purple-50/50 transition-colors group">
+                              <td className="p-5 font-black text-purple-900">{r.rollNo}</td>
+                              <td className="p-5 font-medium">{r.studentName}</td>
+                              <td className="p-5 text-gray-600">{r.className}</td>
+                              <td className="p-5 flex justify-end gap-2">
+                                 <button onClick={() => { setSelectedRecord(r); setPrintMode('result'); }} className="bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-purple-800 shadow-sm transition">Result</button>
+                                 <button onClick={() => { setSelectedRecord(r); setPrintMode('admit'); }} className="bg-pink-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-pink-700 shadow-sm transition">Admit Card</button>
+                                 <button onClick={() => deleteRecord(r.id)} className="p-2 text-gray-300 hover:text-red-600 transition-colors ml-2"><Trash2 size={18}/></button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                   </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Printable View */}
+        {selectedRecord && (
+          <div className="animate-fade-in">
+             <div className="no-print bg-white p-4 rounded-3xl shadow-sm border border-purple-50 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <button onClick={() => setSelectedRecord(null)} className="flex items-center gap-2 text-purple-700 font-bold hover:translate-x-1 transition font-urdu">
+                  <span dir="ltr">← واپس جائیں (Back)</span>
+                </button>
+                <div className="flex gap-2">
+                   <button onClick={() => setPrintMode('result')} className={`px-6 py-2 rounded-xl font-bold transition ${printMode === 'result' ? 'bg-purple-700 text-white' : 'bg-gray-100'}`}>Result View</button>
+                   <button onClick={() => setPrintMode('admit')} className={`px-6 py-2 rounded-xl font-bold transition ${printMode === 'admit' ? 'bg-pink-600 text-white' : 'bg-gray-10
