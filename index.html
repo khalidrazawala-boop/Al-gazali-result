@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AL GAZALI ONLINE GIRLS ACADEMY</title>
-    <!-- Tailwind for Design -->
+    <!-- Tailwind CSS for mobile-friendly design -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase (Compatible Version) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -18,14 +18,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Noto+Nastaliq+Urdu&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
-        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; }
-        .academy-title { font-family: 'Playfair Display', serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-        @media print {
-            .no-print { display: none !important; }
-            .print-border { border: 10px double #064e3b !important; padding: 20px !important; }
-        }
-        .gradient-bg { background: linear-gradient(135deg, #064e3b 0%, #0f766e 100%); }
+        body { font-family: 'Poppins', sans-serif; background-color: #f0fdf4; margin: 0; padding: 0; }
+        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
+        .academy-title { font-family: 'Playfair Display', serif; }
+        .gradient-header { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
@@ -34,261 +31,33 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- Firebase Configuration ---
-        // Note: Make sure your Firebase project is setup to allow anonymous auth or custom tokens.
+        // Firebase Configuration (Empty key provided as per environment instructions)
         const firebaseConfig = JSON.parse(__firebase_config);
-        
-        // Initialize Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
         const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-academy-v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
 
         function App() {
-            const [view, setView] = useState('home'); // home, admin, result, admit
-            const [password, setPassword] = useState('');
-            const [rollInput, setRollInput] = useState('');
+            const [page, setPage] = useState('home');
+            const [roll, setRoll] = useState('');
             const [student, setStudent] = useState(null);
             const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
-
-            const [formData, setFormData] = useState({
-                rollNo: '', name: '', father: '', class: '', session: '2024-25',
-                subjects: [
-                    { name: 'Quran / Islamiat', marks: '' },
-                    { name: 'Urdu', marks: '' },
-                    { name: 'English', marks: '' },
-                    { name: 'Mathematics', marks: '' },
-                    { name: 'Science', marks: '' },
-                    { name: 'Social Studies', marks: '' }
-                ]
-            });
+            const [pass, setPass] = useState('');
 
             useEffect(() => {
-                const signIn = async () => {
+                const initAuth = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                             await auth.signInWithCustomToken(__initial_auth_token);
-                        } else {
-                            await auth.signInAnonymously();
+                        } else { 
+                            await auth.signInAnonymously(); 
                         }
-                    } catch (e) { console.error("Auth Error", e); }
+                    } catch (e) { console.error("Authentication failed", e); }
                 };
-                signIn();
+                initAuth();
             }, []);
 
-            const checkAdmin = () => {
-                if (password === '1234') { setView('dashboard'); setError(''); }
-                else { setError('Ghalat Password! 1234 azmayein.'); }
-            };
-
-            const saveStudent = async (e) => {
-                e.preventDefault();
-                if (!formData.rollNo) return alert("Roll No likhein!");
-                setLoading(true);
-                try {
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data')
-                        .collection('students').doc(formData.rollNo).set({
-                            ...formData,
-                            date: new Date().toISOString()
-                        });
-                    alert("Data Kamyabi se Save Ho Gaya!");
-                    setFormData({ ...formData, rollNo: '', name: '', father: '', class: '' });
-                } catch (err) { alert("Error: " + err.message); }
-                setLoading(false);
-            };
-
-            const searchStudent = async (type) => {
-                if (!rollInput) return;
-                setLoading(true);
-                setError('');
-                try {
-                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data')
-                        .collection('students').doc(rollInput).get();
-                    if (doc.exists) {
-                        setStudent(doc.data());
-                        setView(type);
-                    } else {
-                        setError('Is Roll Number ka record nahi mila.');
-                    }
-                } catch (err) { setError('System Error: Net check karein.'); }
-                setLoading(false);
-            };
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    {/* Header Section */}
-                    <header className="no-print gradient-bg text-white py-10 px-4 text-center shadow-lg border-b-4 border-yellow-500">
-                        <h1 className="academy-title text-3xl md:text-5xl lg:text-6xl font-bold tracking-widest mb-2">
-                            AL GAZALI ONLINE GIRLS ACADEMY
-                        </h1>
-                        <p className="text-sm md:text-lg opacity-90 tracking-widest uppercase font-light">Result & Enrollment Portal</p>
-                    </header>
-
-                    {/* Navigation */}
-                    <nav className="no-print bg-white shadow-md sticky top-0 z-50 flex justify-center gap-4 py-3">
-                        <button onClick={() => setView('home')} className="px-4 py-1 text-emerald-800 font-bold border-b-2 border-emerald-800">HOME</button>
-                        <button onClick={() => setView('admin')} className="px-4 py-1 text-gray-600 font-semibold">ADMIN PANEL</button>
-                    </nav>
-
-                    <main className="flex-grow container mx-auto px-4 py-10">
-                        
-                        {/* Home View */}
-                        {view === 'home' && (
-                            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                                <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-emerald-700">
-                                    <h2 className="text-2xl font-bold mb-6 text-emerald-900 flex items-center gap-2">Result System</h2>
-                                    <p className="text-gray-500 mb-6">Salana imtehan ka result dekhne ke liye Roll Number darj karein.</p>
-                                    <input type="text" placeholder="Roll No..." className="w-full p-4 bg-gray-50 border rounded-2xl mb-4 focus:ring-2 focus:ring-emerald-500 outline-none" onChange={(e)=>setRollInput(e.target.value)} />
-                                    <button onClick={()=>searchStudent('result')} className="w-full gradient-bg text-white py-4 rounded-2xl font-bold text-lg hover:shadow-lg transition">Check Result</button>
-                                </div>
-
-                                <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-teal-600">
-                                    <h2 className="text-2xl font-bold mb-6 text-teal-900">Admit Card Panel</h2>
-                                    <p className="text-gray-500 mb-6">Apna imtehani Admit Card yahan se download karein.</p>
-                                    <input type="text" placeholder="Roll No..." className="w-full p-4 bg-gray-50 border rounded-2xl mb-4 focus:ring-2 focus:ring-teal-500 outline-none" onChange={(e)=>setRollInput(e.target.value)} />
-                                    <button onClick={()=>searchStudent('admit')} className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg hover:shadow-lg transition">Get Admit Card</button>
-                                </div>
-                                {error && <div className="col-span-full bg-red-50 text-red-600 p-4 rounded-xl text-center font-bold">{error}</div>}
-                            </div>
-                        )}
-
-                        {/* Admin Login */}
-                        {view === 'admin' && (
-                            <div className="max-w-md mx-auto bg-white p-10 rounded-3xl shadow-2xl border">
-                                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800 underline decoration-yellow-500">Admin Login</h2>
-                                <input type="password" placeholder="Pass: 1234" className="w-full p-4 border rounded-2xl mb-4 text-center text-xl tracking-tighter" onChange={(e)=>setPassword(e.target.value)} />
-                                <button onClick={checkAdmin} className="w-full bg-black text-white py-4 rounded-2xl font-bold hover:bg-gray-800 transition">Unlock Panel</button>
-                                {error && <p className="text-red-500 text-center mt-4">{error}</p>}
-                            </div>
-                        )}
-
-                        {/* Dashboard (Data Entry) */}
-                        {view === 'dashboard' && (
-                            <div className="bg-white p-6 md:p-10 rounded-3xl shadow-xl border max-w-5xl mx-auto">
-                                <h2 className="text-2xl font-bold mb-8 border-b pb-4 flex justify-between">
-                                    <span>Student Record Entry</span>
-                                    <button onClick={()=>setView('home')} className="text-sm text-red-500">Logout</button>
-                                </h2>
-                                <form onSubmit={saveStudent} className="grid md:grid-cols-2 gap-10">
-                                    <div className="space-y-4">
-                                        <h3 className="font-bold text-emerald-800">Personal Info</h3>
-                                        <input required placeholder="Roll Number" className="w-full p-3 border rounded-xl" value={formData.rollNo} onChange={(e)=>setFormData({...formData, rollNo: e.target.value})} />
-                                        <input required placeholder="Student Name" className="w-full p-3 border rounded-xl" value={formData.name} onChange={(e)=>setFormData({...formData, name: e.target.value})} />
-                                        <input required placeholder="Father Name" className="w-full p-3 border rounded-xl" value={formData.father} onChange={(e)=>setFormData({...formData, father: e.target.value})} />
-                                        <input required placeholder="Class Name" className="w-full p-3 border rounded-xl" value={formData.class} onChange={(e)=>setFormData({...formData, class: e.target.value})} />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <h3 className="font-bold text-emerald-800">Subjects & Marks</h3>
-                                        {formData.subjects.map((sub, idx) => (
-                                            <div key={idx} className="flex gap-2">
-                                                <input className="w-2/3 p-2 border rounded-lg text-sm font-semibold" value={sub.name} onChange={(e)=>{
-                                                    let news = [...formData.subjects]; news[idx].name = e.target.value; setFormData({...formData, subjects: news});
-                                                }} />
-                                                <input type="number" placeholder="Marks" className="w-1/3 p-2 border rounded-lg text-sm" value={sub.marks} onChange={(e)=>{
-                                                    let news = [...formData.subjects]; news[idx].marks = e.target.value; setFormData({...formData, subjects: news});
-                                                }} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button disabled={loading} type="submit" className="md:col-span-2 gradient-bg text-white py-4 rounded-2xl font-bold text-xl transition active:scale-95 shadow-lg">
-                                        {loading ? 'UPLOADING...' : 'SAVE STUDENT DATA'}
-                                    </button>
-                                </form>
-                            </div>
-                        )}
-
-                        {/* Result Display (The Professional Marksheet) */}
-                        {view === 'result' && student && (
-                            <div className="max-w-2xl mx-auto bg-white p-6 md:p-12 shadow-2xl print-border border-[10px] border-double border-emerald-900 relative">
-                                <div className="text-center mb-10 border-b-2 border-emerald-900 pb-6">
-                                    <h1 className="academy-title text-3xl font-bold text-emerald-900">AL GAZALI ONLINE GIRLS ACADEMY</h1>
-                                    <p className="text-xs font-bold tracking-[0.3em] uppercase mt-2">Annual Academic Result - {student.session}</p>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-4 text-xs md:text-sm mb-8 uppercase font-bold">
-                                    <p><span className="text-gray-500">Roll No:</span> {student.rollNo}</p>
-                                    <p><span className="text-gray-500">Class:</span> {student.class}</p>
-                                    <p className="col-span-2"><span className="text-gray-500">Name:</span> {student.name}</p>
-                                    <p className="col-span-2"><span className="text-gray-500">Father's Name:</span> {student.father}</p>
-                                </div>
-
-                                <table className="w-full border-collapse border border-gray-400 mb-8">
-                                    <thead className="bg-emerald-50 text-xs">
-                                        <tr>
-                                            <th className="border border-gray-400 p-3 text-left">SUBJECT</th>
-                                            <th className="border border-gray-400 p-3 w-20 md:w-32">TOTAL</th>
-                                            <th className="border border-gray-400 p-3 w-20 md:w-32">OBTAINED</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-sm">
-                                        {student.subjects.map((s, i) => (
-                                            <tr key={i}>
-                                                <td className="border border-gray-400 p-3 font-semibold uppercase">{s.name}</td>
-                                                <td className="border border-gray-400 p-3 text-center">100</td>
-                                                <td className="border border-gray-400 p-3 text-center font-bold text-emerald-800">{s.marks || '0'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="bg-gray-100 font-bold text-base">
-                                        <tr>
-                                            <td className="border border-gray-400 p-3 text-right">GRAND TOTAL</td>
-                                            <td className="border border-gray-400 p-3 text-center">600</td>
-                                            <td className="border border-gray-400 p-3 text-center text-emerald-900">
-                                                {student.subjects.reduce((a, b) => a + (Number(b.marks) || 0), 0)}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-
-                                <div className="mt-16 flex justify-between px-4 text-[10px] md:text-xs font-bold italic uppercase border-t pt-4 border-emerald-100">
-                                    <span>Signature Controller</span>
-                                    <span>Academy Stamp</span>
-                                    <span>Principal Signature</span>
-                                </div>
-
-                                <button onClick={()=>window.print()} className="no-print mt-12 w-full bg-emerald-800 text-white py-3 rounded-xl font-bold uppercase tracking-widest shadow-md">Print Marksheet</button>
-                            </div>
-                        )}
-
-                        {/* Admit Card Display */}
-                        {view === 'admit' && student && (
-                            <div className="max-w-lg mx-auto bg-white p-8 rounded-2xl shadow-2xl border-4 border-dashed border-teal-600">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-teal-900 uppercase">Examination Admit Card</h2>
-                                        <p className="text-[10px] font-bold text-gray-400">AL GAZALI ONLINE ACADEMY</p>
-                                    </div>
-                                    <div className="w-24 h-28 border-2 bg-gray-50 flex items-center justify-center text-[10px] text-gray-400 text-center">Student Photo</div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm mb-6 border-y py-4">
-                                    <div><p className="text-gray-400 text-[10px] uppercase">Roll Number</p><p className="font-bold text-lg tracking-widest">{student.rollNo}</p></div>
-                                    <div><p className="text-gray-400 text-[10px] uppercase">Class</p><p className="font-bold">{student.class}</p></div>
-                                    <div className="col-span-2"><p className="text-gray-400 text-[10px] uppercase">Student Name</p><p className="font-bold uppercase">{student.name}</p></div>
-                                    <div className="col-span-2"><p className="text-gray-400 text-[10px] uppercase">Father's Name</p><p className="font-bold uppercase">{student.father}</p></div>
-                                </div>
-                                <div className="bg-teal-50 p-3 rounded-lg text-[10px] text-teal-800 font-medium">
-                                    <b>INSTRUCTIONS:</b> Paper online portal par liya jayega. Time table ke mutabiq login karein. Kisi bhi naqal ki surat mein result cancel kar diya jayega.
-                                </div>
-                                <button onClick={()=>window.print()} className="no-print mt-6 w-full bg-teal-600 text-white py-3 rounded-xl font-bold shadow-lg">Download Admit Card</button>
-                            </div>
-                        )}
-
-                    </main>
-
-                    {/* Footer */}
-                    <footer className="no-print bg-gray-900 text-gray-500 py-6 text-center text-xs">
-                        &copy; 2024 AL GAZALI ONLINE GIRLS ACADEMY | All Rights Reserved
-                    </footer>
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+            const findStudent = async (mode) => {
+                if (!
 
