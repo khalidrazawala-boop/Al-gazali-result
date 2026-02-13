@@ -4,169 +4,181 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AL GAZALI ONLINE GIRLS ACADEMY</title>
-    <!-- CSS for Design -->
+    <!-- Tailwind for Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Main Scripts -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase Legacy Scripts for better mobile support -->
+    <!-- Firebase SDKs (Stable Version) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-    
+
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f7fee7; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f0fdf4; margin: 0; }
         .urdu { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
-        .header-bg { background: linear-gradient(to right, #064e3b, #065f46); }
-        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .gradient-header { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); }
+        .hidden { display: none; }
+        /* Print styling */
+        @media print { .no-print { display: none; } }
     </style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <!-- Header Section -->
+    <header class="gradient-header text-white py-10 px-4 text-center shadow-xl no-print">
+        <h1 class="text-2xl md:text-4xl font-bold tracking-widest uppercase">AL GAZALI ONLINE GIRLS ACADEMY</h1>
+        <p class="urdu text-lg mt-2">تعلیم و تربیت کا بہترین مرکز</p>
+    </header>
 
-        // Firebase Configuration
-        // Note: Global variables __firebase_config and __app_id are provided by environment
-        const conf = JSON.parse(__firebase_config);
-        if (!firebase.apps.length) { firebase.initializeApp(conf); }
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-default';
+    <div id="main-container" class="p-6 max-w-lg mx-auto">
+        
+        <!-- Search Page -->
+        <div id="home-page" class="bg-white p-8 rounded-3xl shadow-lg border-t-8 border-emerald-800 text-center mt-10">
+            <h2 class="text-2xl font-bold text-emerald-900 mb-6">Student Result</h2>
+            <input id="rollInput" type="text" placeholder="Roll Number Likhein..." class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-4 text-center font-bold text-xl outline-none focus:border-emerald-500">
+            <button onclick="checkResult()" id="btnText" class="w-full bg-emerald-800 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition">DEKHEIN / SEARCH</button>
+            <p class="mt-8 text-xs text-gray-400 cursor-pointer" onclick="showAdmin()">Admin Login</p>
+        </div>
 
-        function App() {
-            const [view, setView] = useState('main');
-            const [roll, setRoll] = useState('');
-            const [data, setData] = useState(null);
-            const [loading, setLoading] = useState(false);
+        <!-- Result Page -->
+        <div id="result-page" class="hidden bg-white p-6 rounded-xl shadow-2xl border-2 border-emerald-900 mt-6">
+            <div class="text-center border-b-2 border-emerald-900 pb-4 mb-4">
+                <h3 class="font-bold text-emerald-900 text-xl">MARKSHEET 2024-25</h3>
+            </div>
+            <div id="studentInfo" class="text-sm space-y-2 mb-4 p-3 bg-emerald-50 rounded-lg font-bold"></div>
+            <table class="w-full border-collapse border border-emerald-900 text-sm">
+                <thead>
+                    <tr class="bg-emerald-800 text-white font-bold">
+                        <th class="border p-2 text-left">SUBJECT</th>
+                        <th class="border p-2 text-center">MARKS</th>
+                    </tr>
+                </thead>
+                <tbody id="marksBody"></tbody>
+            </table>
+            <div class="no-print">
+                <button onclick="window.print()" class="w-full mt-6 bg-black text-white py-3 rounded-lg font-bold">PRINT / DOWNLOAD</button>
+                <button onclick="goHome()" class="w-full mt-2 text-gray-400 text-xs font-bold underline">Wapas Jayein</button>
+            </div>
+        </div>
 
-            useEffect(() => {
-                const login = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await auth.signInWithCustomToken(__initial_auth_token);
-                    } else { await auth.signInAnonymously(); }
-                };
-                login();
-            }, []);
-
-            const checkResult = async () => {
-                if(!roll) return alert("Roll number likhen");
-                setLoading(true);
-                try {
-                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).get();
-                    if(doc.exists) {
-                        setData(doc.data());
-                        setView('result');
-                    } else { alert("Record nahi mila!"); }
-                } catch(e) { alert("Error: Check internet"); }
-                setLoading(false);
-            };
-
-            return (
-                <div className="min-h-screen flex flex-col">
-                    <div className="header-bg text-white p-8 text-center shadow-lg">
-                        <h1 className="text-2xl md:text-4xl font-bold uppercase tracking-wider">AL GAZALI ONLINE GIRLS ACADEMY</h1>
-                        <p className="urdu text-lg mt-2">تعلیم و تربیت کا مرکز</p>
-                    </div>
-
-                    <div className="p-6 max-w-lg mx-auto w-full">
-                        {view === 'main' && (
-                            <div className="card p-8 mt-10 text-center">
-                                <h2 className="text-xl font-bold text-emerald-900 mb-6">Student Portal</h2>
-                                <input 
-                                    type="text" 
-                                    placeholder="Roll Number Dalein..." 
-                                    className="w-full p-4 border-2 border-emerald-100 rounded-xl mb-4 text-center text-lg focus:border-emerald-500 outline-none"
-                                    onChange={(e) => setRoll(e.target.value)}
-                                />
-                                <button 
-                                    onClick={checkResult}
-                                    className="w-full bg-emerald-800 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
-                                >
-                                    {loading ? 'Sabr Karein...' : 'RESULT DEKHEIN'}
-                                </button>
-                                
-                                <div className="mt-10 pt-6 border-t border-dashed">
-                                    <button onClick={() => setView('login')} className="text-emerald-600 text-sm font-bold">Admin Login</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'login' && (
-                            <div className="card p-8 mt-10 text-center">
-                                <h3 className="font-bold mb-4">Admin Access</h3>
-                                <input type="password" id="adminPass" placeholder="Password" className="w-full p-3 border rounded-lg mb-4 text-center" />
-                                <button onClick={() => {
-                                    if(document.getElementById('adminPass').value === '1234') setView('admin');
-                                    else alert("Ghalat Password");
-                                }} className="bg-black text-white w-full py-3 rounded-lg">Login</button>
-                                <button onClick={() => setView('main')} className="mt-4 text-gray-400 text-xs underline">Wapas Jayein</button>
-                            </div>
-                        )}
-
-                        {view === 'result' && data && (
-                            <div className="card p-6 mt-4 border-t-8 border-emerald-900">
-                                <div className="text-center border-b pb-4 mb-4">
-                                    <h2 className="font-bold text-lg text-emerald-900">AL GAZALI ACADEMY</h2>
-                                    <p className="text-[10px] text-gray-500 uppercase">Official Marksheet 2024-25</p>
-                                </div>
-                                <div className="space-y-2 text-sm mb-6 bg-emerald-50 p-4 rounded-lg">
-                                    <p><b>Name:</b> {data.name}</p>
-                                    <p><b>Roll No:</b> {data.rollNo}</p>
-                                    <p><b>Class:</b> {data.class || 'N/A'}</p>
-                                </div>
-                                <table className="w-full text-left text-sm border">
-                                    <tr className="bg-emerald-800 text-white">
-                                        <th className="p-2 border">Subject</th>
-                                        <th className="p-2 border text-center">Marks</th>
-                                    </tr>
-                                    {(data.subjects || []).map((s, i) => (
-                                        <tr key={i} className="odd:bg-gray-50">
-                                            <td className="p-2 border font-medium uppercase">{s.name}</td>
-                                            <td className="p-2 border text-center font-bold">{s.marks}</td>
-                                        </tr>
-                                    ))}
-                                </table>
-                                <button onClick={() => window.print()} className="w-full mt-6 bg-emerald-900 text-white py-3 rounded-lg font-bold">Print Result</button>
-                                <button onClick={() => setView('main')} className="w-full mt-2 text-gray-400 text-xs">Peeche Jayein</button>
-                            </div>
-                        )}
-
-                        {view === 'admin' && (
-                            <div className="card p-6 mt-4">
-                                <h2 className="font-bold mb-4">Add Student Record</h2>
-                                <div className="space-y-3">
-                                    <input id="sRoll" placeholder="Roll No" className="w-full p-3 border rounded" />
-                                    <input id="sName" placeholder="Student Name" className="w-full p-3 border rounded" />
-                                    <input id="sClass" placeholder="Class (e.g. 8th)" className="w-full p-3 border rounded" />
-                                    <button onClick={async () => {
-                                        const r = document.getElementById('sRoll').value;
-                                        const n = document.getElementById('sName').value;
-                                        const c = document.getElementById('sClass').value;
-                                        if(!r || !n) return alert("Fields bharein");
-                                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(r).set({
-                                            rollNo: r, name: n, class: c,
-                                            subjects: [
-                                                {name: 'Quran', marks: '90'}, {name: 'Urdu', marks: '85'}, {name: 'English', marks: '80'}
-                                            ]
-                                        });
-                                        alert("Record Save Ho Gaya!");
-                                    }} className="w-full bg-emerald-700 text-white py-4 rounded-xl font-bold">SAVE RECORD</button>
-                                    <button onClick={() => setView('main')} className="w-full text-gray-400 text-xs">Logout</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+        <!-- Admin Page -->
+        <div id="admin-page" class="hidden bg-white p-8 rounded-2xl shadow-lg mt-10 text-center border">
+            <h2 class="font-bold mb-4 text-emerald-900">Admin Entry Panel</h2>
+            <div class="space-y-3">
+                <input id="passInput" type="password" placeholder="Password" class="w-full p-3 border rounded-xl text-center">
+                <div id="admin-fields" class="hidden space-y-3 pt-4 border-t">
+                    <input id="newRoll" placeholder="Roll No" class="w-full p-2 border rounded">
+                    <input id="newName" placeholder="Student Name" class="w-full p-2 border rounded">
+                    <input id="newFather" placeholder="Father Name" class="w-full p-2 border rounded">
+                    <input id="newClass" placeholder="Class" class="w-full p-2 border rounded">
+                    <button onclick="saveStudent()" class="w-full bg-emerald-600 text-white py-3 rounded font-bold">SAVE RECORD</button>
                 </div>
-            );
+                <button id="loginBtn" onclick="adminLogin()" class="w-full bg-black text-white py-3 rounded-xl font-bold">LOGIN</button>
+                <button onclick="goHome()" class="mt-4 text-xs text-gray-400 underline">Back to Home</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Firebase Configuration (Environment variables are used at runtime)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
+
+        // Auto Login for database access
+        firebase.auth().signInAnonymously().catch(e => console.error("Auth Fail"));
+
+        function goHome() {
+            document.getElementById('home-page').classList.remove('hidden');
+            document.getElementById('result-page').classList.add('hidden');
+            document.getElementById('admin-page').classList.add('hidden');
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function showAdmin() {
+            document.getElementById('home-page').classList.add('hidden');
+            document.getElementById('admin-page').classList.remove('hidden');
+        }
+
+        function adminLogin() {
+            const pass = document.getElementById('passInput').value;
+            if(pass === '1234') {
+                document.getElementById('admin-fields').classList.remove('hidden');
+                document.getElementById('passInput').classList.add('hidden');
+                document.getElementById('loginBtn').classList.add('hidden');
+            } else {
+                alert("Ghalat Password!");
+            }
+        }
+
+        async function saveStudent() {
+            const r = document.getElementById('newRoll').value;
+            const n = document.getElementById('newName').value;
+            const f = document.getElementById('newFather').value;
+            const c = document.getElementById('newClass').value;
+
+            if(!r || !n) return alert("Pehle data bharein");
+
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(r).set({
+                    rollNo: r, name: n, father: f, class: c,
+                    subjects: [
+                        {name: 'Quran / Islamiat', marks: '90'},
+                        {name: 'Urdu', marks: '85'},
+                        {name: 'English', marks: '80'}
+                    ]
+                });
+                alert("Mubarak ho! Data save ho gaya.");
+                goHome();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        async function checkResult() {
+            const roll = document.getElementById('rollInput').value;
+            const btn = document.getElementById('btnText');
+            if(!roll) return alert("Meharbani karke Roll Number likhein");
+
+            btn.innerText = "Searching...";
+            btn.disabled = true;
+
+            try {
+                const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).get();
+                if(doc.exists) {
+                    displayResult(doc.data());
+                } else {
+                    alert("Maaf kijiyega, ye Roll Number record mein nahi hai.");
+                }
+            } catch(e) {
+                alert("Internet connection check karein.");
+            }
+            btn.innerText = "DEKHEIN / SEARCH";
+            btn.disabled = false;
+        }
+
+        function displayResult(data) {
+            document.getElementById('home-page').classList.add('hidden');
+            document.getElementById('result-page').classList.remove('hidden');
+            
+            document.getElementById('studentInfo').innerHTML = `
+                <p>NAME: ${data.name.toUpperCase()}</p>
+                <p>FATHER: ${data.father ? data.father.toUpperCase() : 'N/A'}</p>
+                <p>ROLL NO: ${data.rollNo}</p>
+                <p>CLASS: ${data.class || 'General'}</p>
+            `;
+
+            let rows = "";
+            let total = 0;
+            const subjects = data.subjects || [];
+            
+            subjects.forEach(s => {
+                rows += `<tr><td class="border p-2 font-bold uppercase">${s.name}</td><td class="border p-2 text-center font-bold">${s.marks}</td></tr>`;
+                total += Number(s.marks);
+            });
+
+            rows += `<tr class="bg-gray-100 font-bold text-lg"><td class="border p-2 text-right">TOTAL</td><td class="border p-2 text-center text-emerald-900">${total}</td></tr>`;
+            document.getElementById('marksBody').innerHTML = rows;
+        }
     </script>
 </body>
 </html>
