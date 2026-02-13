@@ -4,25 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AL GAZALI ONLINE GIRLS ACADEMY</title>
-    <!-- Tailwind CSS for mobile-friendly design -->
+    <!-- CSS for Design -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & Babel -->
+    <!-- Main Scripts -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase -->
+    <!-- Firebase Legacy Scripts for better mobile support -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Noto+Nastaliq+Urdu&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f0fdf4; margin: 0; padding: 0; }
-        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
-        .academy-title { font-family: 'Playfair Display', serif; }
-        .gradient-header { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); }
-        @media print { .no-print { display: none !important; } }
+        body { font-family: 'Poppins', sans-serif; background-color: #f7fee7; }
+        .urdu { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
+        .header-bg { background: linear-gradient(to right, #064e3b, #065f46); }
+        .card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -31,33 +30,144 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Firebase Configuration (Empty key provided as per environment instructions)
-        const firebaseConfig = JSON.parse(__firebase_config);
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        // Firebase Configuration
+        // Note: Global variables __firebase_config and __app_id are provided by environment
+        const conf = JSON.parse(__firebase_config);
+        if (!firebase.apps.length) { firebase.initializeApp(conf); }
         const db = firebase.firestore();
         const auth = firebase.auth();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-default';
 
         function App() {
-            const [page, setPage] = useState('home');
+            const [view, setView] = useState('main');
             const [roll, setRoll] = useState('');
-            const [student, setStudent] = useState(null);
+            const [data, setData] = useState(null);
             const [loading, setLoading] = useState(false);
-            const [pass, setPass] = useState('');
 
             useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await auth.signInWithCustomToken(__initial_auth_token);
-                        } else { 
-                            await auth.signInAnonymously(); 
-                        }
-                    } catch (e) { console.error("Authentication failed", e); }
+                const login = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } else { await auth.signInAnonymously(); }
                 };
-                initAuth();
+                login();
             }, []);
 
-            const findStudent = async (mode) => {
-                if (!
+            const checkResult = async () => {
+                if(!roll) return alert("Roll number likhen");
+                setLoading(true);
+                try {
+                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).get();
+                    if(doc.exists) {
+                        setData(doc.data());
+                        setView('result');
+                    } else { alert("Record nahi mila!"); }
+                } catch(e) { alert("Error: Check internet"); }
+                setLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <div className="header-bg text-white p-8 text-center shadow-lg">
+                        <h1 className="text-2xl md:text-4xl font-bold uppercase tracking-wider">AL GAZALI ONLINE GIRLS ACADEMY</h1>
+                        <p className="urdu text-lg mt-2">تعلیم و تربیت کا مرکز</p>
+                    </div>
+
+                    <div className="p-6 max-w-lg mx-auto w-full">
+                        {view === 'main' && (
+                            <div className="card p-8 mt-10 text-center">
+                                <h2 className="text-xl font-bold text-emerald-900 mb-6">Student Portal</h2>
+                                <input 
+                                    type="text" 
+                                    placeholder="Roll Number Dalein..." 
+                                    className="w-full p-4 border-2 border-emerald-100 rounded-xl mb-4 text-center text-lg focus:border-emerald-500 outline-none"
+                                    onChange={(e) => setRoll(e.target.value)}
+                                />
+                                <button 
+                                    onClick={checkResult}
+                                    className="w-full bg-emerald-800 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition-transform"
+                                >
+                                    {loading ? 'Sabr Karein...' : 'RESULT DEKHEIN'}
+                                </button>
+                                
+                                <div className="mt-10 pt-6 border-t border-dashed">
+                                    <button onClick={() => setView('login')} className="text-emerald-600 text-sm font-bold">Admin Login</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'login' && (
+                            <div className="card p-8 mt-10 text-center">
+                                <h3 className="font-bold mb-4">Admin Access</h3>
+                                <input type="password" id="adminPass" placeholder="Password" className="w-full p-3 border rounded-lg mb-4 text-center" />
+                                <button onClick={() => {
+                                    if(document.getElementById('adminPass').value === '1234') setView('admin');
+                                    else alert("Ghalat Password");
+                                }} className="bg-black text-white w-full py-3 rounded-lg">Login</button>
+                                <button onClick={() => setView('main')} className="mt-4 text-gray-400 text-xs underline">Wapas Jayein</button>
+                            </div>
+                        )}
+
+                        {view === 'result' && data && (
+                            <div className="card p-6 mt-4 border-t-8 border-emerald-900">
+                                <div className="text-center border-b pb-4 mb-4">
+                                    <h2 className="font-bold text-lg text-emerald-900">AL GAZALI ACADEMY</h2>
+                                    <p className="text-[10px] text-gray-500 uppercase">Official Marksheet 2024-25</p>
+                                </div>
+                                <div className="space-y-2 text-sm mb-6 bg-emerald-50 p-4 rounded-lg">
+                                    <p><b>Name:</b> {data.name}</p>
+                                    <p><b>Roll No:</b> {data.rollNo}</p>
+                                    <p><b>Class:</b> {data.class || 'N/A'}</p>
+                                </div>
+                                <table className="w-full text-left text-sm border">
+                                    <tr className="bg-emerald-800 text-white">
+                                        <th className="p-2 border">Subject</th>
+                                        <th className="p-2 border text-center">Marks</th>
+                                    </tr>
+                                    {(data.subjects || []).map((s, i) => (
+                                        <tr key={i} className="odd:bg-gray-50">
+                                            <td className="p-2 border font-medium uppercase">{s.name}</td>
+                                            <td className="p-2 border text-center font-bold">{s.marks}</td>
+                                        </tr>
+                                    ))}
+                                </table>
+                                <button onClick={() => window.print()} className="w-full mt-6 bg-emerald-900 text-white py-3 rounded-lg font-bold">Print Result</button>
+                                <button onClick={() => setView('main')} className="w-full mt-2 text-gray-400 text-xs">Peeche Jayein</button>
+                            </div>
+                        )}
+
+                        {view === 'admin' && (
+                            <div className="card p-6 mt-4">
+                                <h2 className="font-bold mb-4">Add Student Record</h2>
+                                <div className="space-y-3">
+                                    <input id="sRoll" placeholder="Roll No" className="w-full p-3 border rounded" />
+                                    <input id="sName" placeholder="Student Name" className="w-full p-3 border rounded" />
+                                    <input id="sClass" placeholder="Class (e.g. 8th)" className="w-full p-3 border rounded" />
+                                    <button onClick={async () => {
+                                        const r = document.getElementById('sRoll').value;
+                                        const n = document.getElementById('sName').value;
+                                        const c = document.getElementById('sClass').value;
+                                        if(!r || !n) return alert("Fields bharein");
+                                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(r).set({
+                                            rollNo: r, name: n, class: c,
+                                            subjects: [
+                                                {name: 'Quran', marks: '90'}, {name: 'Urdu', marks: '85'}, {name: 'English', marks: '80'}
+                                            ]
+                                        });
+                                        alert("Record Save Ho Gaya!");
+                                    }} className="w-full bg-emerald-700 text-white py-4 rounded-xl font-bold">SAVE RECORD</button>
+                                    <button onClick={() => setView('main')} className="w-full text-gray-400 text-xs">Logout</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
 
