@@ -1,272 +1,337 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL GAZALI ONLINE GIRLS ACADEMY</title>
+    
+    <!-- Tailwind CSS for modern UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Babel for Browser Rendering -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-// --- CONFIGURATION ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-academy-portal';
+    <!-- Google Fonts for Urdu & English -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
-const auth = getAuth(app);
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-const App = () => {
-  const [view, setView] = useState('home'); // home, admin, result
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [adminPass, setAdminPass] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [rollInput, setRollInput] = useState('');
-  const [resultData, setResultData] = useState(null);
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
+        .urdu-text { font-family: 'Noto Nastaliq Urdu', serif; line-height: 2.5; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        @media print { .no-print { display: none !important; } .print-area { border: none !important; padding: 0 !important; } }
+        .gradient-bg { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  // Student Form State
-  const [formData, setFormData] = useState({
-    name: '',
-    rollNo: '',
-    father: '',
-    className: '',
-    subjects: [
-      { name: '', marks: '' },
-      { name: '', marks: '' },
-      { name: '', marks: '' },
-      { name: '', marks: '' },
-      { name: '', marks: '' },
-      { name: '', marks: '' }
-    ]
-  });
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-  useEffect(() => {
-    const login = async () => {
-      try {
-        const res = await signInAnonymously(auth);
-        setUser(res.user);
-      } catch (err) {
-        console.error("Auth Error", err);
-      }
-    };
-    login();
-  }, []);
+        // --- Firebase Configuration ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-portal';
 
-  const handleAdminLogin = () => {
-    if (adminPass === '1234') {
-      setIsAuthorized(true);
-    } else {
-      alert("Ghalat Passcode!");
-    }
-  };
+        // Initialize Firebase (Compat Mode for Browser)
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-  const handlePublish = async () => {
-    if (!user) return alert("System connect ho raha hai, thoda intezar karein.");
-    if (!formData.name || !formData.rollNo) return alert("Naam aur Roll Number zaroori hain.");
+        const App = () => {
+            const [view, setView] = useState('home'); 
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [adminPass, setAdminPass] = useState('');
+            const [isAuthorized, setIsAuthorized] = useState(false);
+            const [rollInput, setRollInput] = useState('');
+            const [resultData, setResultData] = useState(null);
 
-    setLoading(true);
-    try {
-      const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', formData.rollNo);
-      await setDoc(studentRef, {
-        ...formData,
-        subjects: formData.subjects.filter(s => s.name.trim() !== ''),
-        timestamp: new Date().toISOString()
-      });
-      alert("Record kamyabi se save ho gaya!");
-      window.location.reload();
-    } catch (err) {
-      alert("Error: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+            // Entry Form State
+            const [formData, setFormData] = useState({
+                name: '', rollNo: '', father: '', className: '',
+                subjects: [
+                    { name: 'Quran', marks: '' }, { name: 'Hadees', marks: '' },
+                    { name: 'Fiqh', marks: '' }, { name: 'Sarf', marks: '' },
+                    { name: 'Nahev', marks: '' }, { name: 'Adab', marks: '' }
+                ]
+            });
 
-  const fetchResult = async () => {
-    if (!rollInput) return alert("Roll number likhein");
-    setLoading(true);
-    try {
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', rollInput);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setResultData(docSnap.data());
-        setView('result');
-      } else {
-        alert("Is Roll Number ka koi record nahi mila.");
-      }
-    } catch (err) {
-      alert("Data lane mein masla hua.");
-    } finally {
-      setLoading(false);
-    }
-  };
+            useEffect(() => {
+                // Anonymous Sign In to prevent permission errors
+                auth.signInAnonymously()
+                    .then(cred => setUser(cred.user))
+                    .catch(err => console.error("Auth Error:", err));
+            }, []);
 
-  const updateSubject = (index, field, value) => {
-    const newSubs = [...formData.subjects];
-    newSubs[index][field] = value;
-    setFormData({ ...formData, subjects: newSubs });
-  };
+            const handleAdminLogin = () => {
+                if (adminPass === '1234') setIsAuthorized(true);
+                else alert("Ghalat Passcode!");
+            };
 
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-10">
-      {/* Header */}
-      <header className="no-print bg-emerald-900 text-white py-10 px-6 text-center shadow-2xl border-b-4 border-amber-500">
-        <h1 className="text-3xl md:text-5xl font-serif font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200">
-          AL GAZALI ONLINE GIRLS ACADEMY
-        </h1>
-        <p className="mt-4 text-2xl font-semibold opacity-90" style={{ fontFamily: 'Noto Nastaliq Urdu' }}>
-          تعلیم و تربیت کا بہترین مرکز
-        </p>
-      </header>
+            const saveRecord = async () => {
+                if (!user) return alert("System connect ho raha hai, thoda intezar karein.");
+                if (!formData.name || !formData.rollNo) return alert("Naam aur Roll No zaroori hain.");
 
-      <main className="max-w-4xl mx-auto mt-10 px-4">
-        {/* Home View */}
-        {view === 'home' && (
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-4 border-emerald-700">
-              <h2 className="text-2xl font-bold mb-6 text-emerald-900">Check Result</h2>
-              <input 
-                type="text" 
-                placeholder="Roll Number" 
-                className="w-full p-4 bg-slate-50 border rounded-xl mb-4 text-center font-bold text-xl"
-                value={rollInput}
-                onChange={(e) => setRollInput(e.target.value)}
-              />
-              <button 
-                onClick={fetchResult}
-                disabled={loading}
-                className="w-full bg-emerald-800 text-white py-4 rounded-xl font-bold hover:bg-emerald-900"
-              >
-                {loading ? 'Searching...' : 'VIEW RESULT'}
-              </button>
-            </div>
+                setLoading(true);
+                try {
+                    const docPath = `artifacts/${appId}/public/data/students/${formData.rollNo}`;
+                    await db.doc(docPath).set({
+                        ...formData,
+                        timestamp: new Date().toISOString()
+                    });
+                    alert("Record kamyabi se save ho gaya!");
+                    setFormData({
+                        name: '', rollNo: '', father: '', className: '',
+                        subjects: formData.subjects.map(s => ({ ...s, marks: '' }))
+                    });
+                } catch (err) {
+                    alert("Error: " + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-4 border-amber-600">
-              <h2 className="text-2xl font-bold mb-6 text-amber-800">Admin Access</h2>
-              <button 
-                onClick={() => setView('admin')}
-                className="w-full bg-amber-600 text-white py-4 rounded-xl font-bold"
-              >
-                GO TO PANEL
-              </button>
-            </div>
-          </div>
-        )}
+            const checkResult = async () => {
+                if (!rollInput) return alert("Roll number likhein");
+                setLoading(true);
+                try {
+                    const docPath = `artifacts/${appId}/public/data/students/${rollInput}`;
+                    const docSnap = await db.doc(docPath).get();
+                    if (docSnap.exists) {
+                        setResultData(docSnap.data());
+                        setView('result');
+                    } else {
+                        alert("Is Roll Number ka koi record nahi mila.");
+                    }
+                } catch (err) {
+                    alert("Data check karne mein masla hua.");
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-        {/* Admin Panel */}
-        {view === 'admin' && (
-          <div className="bg-white p-8 rounded-3xl shadow-2xl">
-            {!isAuthorized ? (
-              <div className="text-center space-y-4">
-                <h2 className="text-xl font-bold">Admin Login</h2>
-                <input 
-                  type="password" 
-                  placeholder="Enter Password" 
-                  className="p-4 border rounded-xl text-center"
-                  value={adminPass}
-                  onChange={(e) => setAdminPass(e.target.value)}
-                />
-                <button onClick={handleAdminLogin} className="block mx-auto bg-emerald-900 text-white px-10 py-3 rounded-xl">Login</button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-black text-center text-emerald-900 border-b pb-4">STUDENT DATA ENTRY</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <input placeholder="Student Name" className="p-3 border rounded-lg col-span-2" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}/>
-                  <input placeholder="Roll No" className="p-3 border rounded-lg" value={formData.rollNo} onChange={e => setFormData({...formData, rollNo: e.target.value})}/>
-                  <input placeholder="Father Name" className="p-3 border rounded-lg" value={formData.father} onChange={e => setFormData({...formData, father: e.target.value})}/>
-                  <input placeholder="Class" className="p-3 border rounded-lg col-span-2" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})}/>
+            return (
+                <div className="min-h-screen">
+                    {/* Top Header */}
+                    <header className="no-print gradient-bg text-white py-12 px-6 text-center shadow-xl">
+                        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter">
+                            AL GAZALI ONLINE GIRLS ACADEMY
+                        </h1>
+                        <p className="urdu-text text-3xl mt-4 text-emerald-100">
+                            تعلیم و تربیت کا بہترین مرکز
+                        </p>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto px-4 -mt-8">
+                        {/* Home View */}
+                        {view === 'home' && (
+                            <div className="grid md:grid-cols-2 gap-8">
+                                <div className="glass-card p-10 rounded-3xl shadow-2xl border-t-8 border-emerald-800">
+                                    <h2 className="text-2xl font-bold text-emerald-900 mb-6">Student Portal</h2>
+                                    <p className="text-slate-500 mb-6 text-sm">Apna Roll Number enter karke result check karein.</p>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Enter Roll Number (e.g 1001)" 
+                                        className="w-full p-4 border-2 border-slate-100 rounded-2xl mb-4 text-center font-bold text-2xl focus:border-emerald-500 outline-none transition-all"
+                                        value={rollInput}
+                                        onChange={(e) => setRollInput(e.target.value)}
+                                    />
+                                    <button 
+                                        onClick={checkResult}
+                                        disabled={loading}
+                                        className="w-full bg-emerald-800 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-900 shadow-lg shadow-emerald-200 transition-all"
+                                    >
+                                        {loading ? 'Searching...' : 'VIEW RESULT'}
+                                    </button>
+                                </div>
+
+                                <div className="glass-card p-10 rounded-3xl shadow-2xl border-t-8 border-amber-600">
+                                    <h2 className="text-2xl font-bold text-amber-800 mb-6">Staff Access</h2>
+                                    <p className="text-slate-500 mb-6 text-sm">Sirf academy staff ke liye entry panel.</p>
+                                    <button 
+                                        onClick={() => setView('admin')}
+                                        className="w-full bg-amber-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-amber-700 shadow-lg shadow-amber-200 transition-all"
+                                    >
+                                        ADMIN PANEL
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Admin Panel */}
+                        {view === 'admin' && (
+                            <div className="glass-card p-8 rounded-3xl shadow-2xl mb-10">
+                                {!isAuthorized ? (
+                                    <div className="text-center py-10 space-y-6">
+                                        <h2 className="text-2xl font-bold">Secure Login</h2>
+                                        <input 
+                                            type="password" 
+                                            placeholder="Enter Admin Pin" 
+                                            className="p-4 border-2 rounded-2xl text-center text-2xl tracking-widest outline-none focus:border-emerald-500"
+                                            value={adminPass}
+                                            onChange={(e) => setAdminPass(e.target.value)}
+                                        />
+                                        <div className="flex gap-4 justify-center">
+                                            <button onClick={() => setView('home')} className="px-8 py-3 font-bold text-slate-400">Back</button>
+                                            <button onClick={handleAdminLogin} className="bg-emerald-900 text-white px-12 py-3 rounded-xl font-bold shadow-lg">Enter</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        <div className="flex justify-between items-center border-b pb-4">
+                                            <h2 className="text-2xl font-black text-emerald-900 italic">NEW DATA ENTRY</h2>
+                                            <button onClick={() => setIsAuthorized(false)} className="text-red-500 font-bold">Logout</button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Student Name</label>
+                                                <input className="w-full p-3 bg-slate-50 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}/>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Roll Number</label>
+                                                <input className="w-full p-3 bg-slate-50 border rounded-xl" value={formData.rollNo} onChange={e => setFormData({...formData, rollNo: e.target.value})}/>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Father Name</label>
+                                                <input className="w-full p-3 bg-slate-50 border rounded-xl" value={formData.father} onChange={e => setFormData({...formData, father: e.target.value})}/>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Class</label>
+                                                <input className="w-full p-3 bg-slate-50 border rounded-xl" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})}/>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                                            <h3 className="font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Marks Details
+                                            </h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                {formData.subjects.map((sub, i) => (
+                                                    <div key={i} className="bg-white p-3 rounded-xl shadow-sm border">
+                                                        <p className="text-[10px] font-bold mb-1">{sub.name}</p>
+                                                        <input 
+                                                            type="number"
+                                                            className="w-full text-center font-bold text-lg outline-none" 
+                                                            value={sub.marks} 
+                                                            onChange={e => {
+                                                                const s = [...formData.subjects];
+                                                                s[i].marks = e.target.value;
+                                                                setFormData({...formData, subjects: s});
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            onClick={saveRecord}
+                                            disabled={loading}
+                                            className="w-full bg-emerald-800 text-white py-5 rounded-2xl font-bold text-xl shadow-xl hover:bg-emerald-900 transition-all disabled:opacity-50"
+                                        >
+                                            {loading ? 'SAVING TO DATABASE...' : 'PUBLISH OFFICIAL RECORD'}
+                                        </button>
+                                        <button onClick={() => setView('home')} className="w-full text-slate-400 font-bold">Return Home</button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Result View */}
+                        {view === 'result' && resultData && (
+                            <div className="bg-white p-4 rounded-xl shadow-2xl print-area">
+                                <div className="border-[12px] border-double border-emerald-900 p-8 relative overflow-hidden bg-emerald-50/20">
+                                    {/* Watermark */}
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
+                                        <h1 className="text-9xl font-black -rotate-45">AL GAZALI</h1>
+                                    </div>
+
+                                    <div className="text-center mb-10 border-b-4 border-emerald-900 pb-6">
+                                        <h2 className="text-2xl md:text-3xl font-black text-emerald-900 mb-1">AL GAZALI ONLINE GIRLS ACADEMY</h2>
+                                        <p className="urdu-text text-2xl text-emerald-700 leading-none">تعلیم و تربیت کا بہترین مرکز</p>
+                                        <div className="mt-4 inline-block bg-amber-500 text-white px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                            Annual Academic Report
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-10 mb-10 text-sm">
+                                        <div className="space-y-4">
+                                            <div><p className="text-slate-400 text-[9px] uppercase font-bold">Student Name</p><p className="font-bold text-xl border-b border-dotted border-slate-300">{resultData.name}</p></div>
+                                            <div><p className="text-slate-400 text-[9px] uppercase font-bold">Father Name</p><p className="font-bold text-lg border-b border-dotted border-slate-300">{resultData.father}</p></div>
+                                        </div>
+                                        <div className="text-right space-y-4">
+                                            <div><p className="text-slate-400 text-[9px] uppercase font-bold">Roll Number</p><p className="font-bold text-xl border-b border-dotted border-slate-300 inline-block min-w-[100px]">{resultData.rollNo}</p></div>
+                                            <div><p className="text-slate-400 text-[9px] uppercase font-bold">Class</p><p className="font-bold text-lg border-b border-dotted border-slate-300 inline-block min-w-[100px]">{resultData.className}</p></div>
+                                        </div>
+                                    </div>
+
+                                    <table className="w-full mb-8 rounded-lg overflow-hidden border-collapse">
+                                        <thead className="bg-emerald-900 text-white">
+                                            <tr>
+                                                <th className="p-4 text-left uppercase text-xs tracking-widest">Subject Description</th>
+                                                <th className="p-4 text-center uppercase text-xs tracking-widest w-32">Obtained Marks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white">
+                                            {resultData.subjects.map((s, i) => (
+                                                <tr key={i} className="border-b border-emerald-100 last:border-emerald-900">
+                                                    <td className="p-4 font-bold text-slate-700 italic">{s.name}</td>
+                                                    <td className="p-4 text-center font-black text-xl">{s.marks}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="bg-emerald-900 text-white">
+                                                <td className="p-5 text-right font-bold text-lg">GRAND TOTAL</td>
+                                                <td className="p-5 text-center text-3xl font-black italic">
+                                                    {resultData.subjects.reduce((acc, curr) => acc + (Number(curr.marks) || 0), 0)}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+
+                                    <div className="flex justify-between mt-20 px-4">
+                                        <div className="text-center w-40">
+                                            <div className="h-1 bg-slate-900 mb-2"></div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider">Controller Exams</p>
+                                        </div>
+                                        <div className="text-center w-40">
+                                            <div className="h-1 bg-slate-900 mb-2"></div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider">Principal Signature</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <p className="text-center text-[8px] text-slate-400 mt-10 italic">This is an electronically generated report. Official seal is required for verification.</p>
+                                </div>
+
+                                <div className="no-print mt-8 flex gap-4">
+                                    <button onClick={() => window.print()} className="flex-1 bg-emerald-900 text-white py-5 rounded-2xl font-bold shadow-lg">PRINT CERTIFICATE</button>
+                                    <button onClick={() => setView('home')} className="px-10 bg-slate-100 text-slate-600 py-5 rounded-2xl font-bold border">GO BACK</button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="no-print text-center py-20 text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em]">
+                        &copy; 2024-2025 AL GAZALI ONLINE GIRLS ACADEMY | PORTAL v2.0
+                    </footer>
                 </div>
-                
-                <div className="bg-slate-50 p-4 rounded-xl">
-                  <h3 className="font-bold mb-4">Subjects & Marks</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {formData.subjects.map((sub, i) => (
-                      <div key={i} className="flex gap-2">
-                        <input placeholder="Subject" className="w-2/3 p-2 border rounded" value={sub.name} onChange={e => updateSubject(i, 'name', e.target.value)}/>
-                        <input placeholder="Marks" className="w-1/3 p-2 border rounded text-center" value={sub.marks} onChange={e => updateSubject(i, 'marks', e.target.value)}/>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            );
+        };
 
-                <button 
-                  onClick={handlePublish}
-                  disabled={loading}
-                  className="w-full bg-emerald-900 text-white py-5 rounded-2xl font-bold text-xl shadow-lg"
-                >
-                  {loading ? 'PUBLISHING...' : 'POST OFFICIAL RECORD'}
-                </button>
-                <button onClick={() => setView('home')} className="w-full text-slate-400 font-bold py-2">Back to Home</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Result Display */}
-        {view === 'result' && resultData && (
-          <div className="bg-white p-2 rounded shadow-2xl">
-            <div className="border-8 border-double border-emerald-900 p-6 relative">
-              <div className="text-center border-b-2 border-emerald-900 pb-6 mb-6">
-                <h2 className="text-2xl font-serif font-black text-emerald-900">AL GAZALI ONLINE GIRLS ACADEMY</h2>
-                <p className="text-xs tracking-widest text-amber-600 font-bold uppercase mt-1">Annual Result Certificate</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-8 text-sm">
-                <div>
-                  <p className="text-slate-400 uppercase text-[10px]">Name</p>
-                  <p className="font-bold text-lg">{resultData.name}</p>
-                  <p className="text-slate-400 uppercase text-[10px] mt-2">Father</p>
-                  <p className="font-bold">{resultData.father}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-400 uppercase text-[10px]">Roll Number</p>
-                  <p className="font-bold text-lg">{resultData.rollNo}</p>
-                  <p className="text-slate-400 uppercase text-[10px] mt-2">Class</p>
-                  <p className="font-bold">{resultData.className}</p>
-                </div>
-              </div>
-
-              <table className="w-full mb-10">
-                <thead className="bg-emerald-900 text-white">
-                  <tr>
-                    <th className="p-3 text-left">Subject</th>
-                    <th className="p-3 text-center">Marks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultData.subjects.map((s, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-3 font-bold uppercase italic">{s.name}</td>
-                      <td className="p-3 text-center font-black">{s.marks}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-amber-500 text-white">
-                    <td className="p-4 text-right font-black">TOTAL AGGREGATE</td>
-                    <td className="p-4 text-center text-2xl font-black">
-                      {resultData.subjects.reduce((acc, curr) => acc + Number(curr.marks), 0)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              <div className="flex justify-between mt-20 px-4">
-                <div className="text-center border-t border-slate-900 w-32 pt-2 text-[10px] font-bold">Principal Signature</div>
-                <div className="text-center border-t border-slate-900 w-32 pt-2 text-[10px] font-bold">Exam Controller</div>
-              </div>
-            </div>
-            <div className="no-print mt-6 flex gap-4">
-              <button onClick={() => window.print()} className="flex-1 bg-emerald-900 text-white py-4 rounded-xl font-bold">PRINT</button>
-              <button onClick={() => setView('home')} className="px-8 bg-slate-100 py-4 rounded-xl font-bold">BACK</button>
-            </div>
-          </div>
-        )}
-      </main>
-      
-      <footer className="no-print text-center mt-20 text-slate-400 text-xs uppercase tracking-widest font-bold">
-        &copy; 2024 Al Gazali Online Girls Academy | Verified Portal
-      </footer>
-    </div>
-  );
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
 
