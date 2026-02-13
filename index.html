@@ -10,239 +10,231 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&family=Cinzel:wght@700&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&family=Cinzel:wght@400;700;900&family=Great+Vibes&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        :root { --primary: #064e3b; --gold: #b45309; }
-        body { font-family: 'Poppins', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        :root { --primary: #064e3b; --gold: #b45309; --light-gold: #fbbf24; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; color: #1e293b; overflow-x: hidden; }
         .urdu { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
         
-        /* Premium Borders for Big Academies */
+        /* Stylish Academy Name */
+        .academy-title {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.15em;
+            background: linear-gradient(to right, #fde68a, #f59e0b, #fde68a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: 900;
+        }
+
         .premium-border { 
             border: 20px solid transparent;
             border-image: url('https://www.transparenttextures.com/patterns/gold-dust.png') 30 stretch;
             background: white;
-            box-shadow: 0 0 40px rgba(0,0,0,0.1);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.15);
             position: relative;
         }
-        .inner-frame {
-            border: 2px solid var(--primary);
-            padding: 40px;
-            margin: -10px;
+        .inner-frame { border: 1px solid var(--gold); padding: 40px; position: relative; }
+        .inner-frame::before {
+            content: '';
+            position: absolute;
+            top: 5px; left: 5px; right: 5px; bottom: 5px;
+            border: 3px double var(--primary);
+            pointer-events: none;
         }
         
         .watermark { 
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%) rotate(-45deg); 
-            font-size: 6rem; opacity: 0.04; font-weight: 900; 
-            pointer-events: none; white-space: nowrap; z-index: 0;
-            color: var(--primary);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); 
+            font-size: 6rem; opacity: 0.04; font-weight: 900; pointer-events: none; z-index: 0; 
+            color: var(--primary); font-family: 'Cinzel', serif;
         }
 
         .header-gradient { 
-            background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); 
-            position: relative; overflow: hidden; 
+            background: radial-gradient(circle at center, #065f46 0%, #022c22 100%); 
+            border-bottom: 5px solid var(--gold);
         }
-        
-        .btn-gold {
-            background: linear-gradient(to bottom, #d97706, #b45309);
+
+        .btn-gold { 
+            background: linear-gradient(135deg, #d97706, #92400e); 
             color: white;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(180, 83, 9, 0.3);
         }
-        .btn-gold:hover { transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(180, 83, 9, 0.4); }
 
         .hidden { display: none; }
+        
         @media print { 
             .no-print { display: none !important; } 
-            body { background: white; padding: 0; }
-            .premium-border { border: 10px double var(--primary) !important; box-shadow: none; }
+            .premium-border { border: 10px double var(--gold) !important; box-shadow: none; }
+            .academy-title { -webkit-text-fill-color: #064e3b !important; text-shadow: none; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Professional Navbar -->
-    <header class="header-gradient text-white py-16 px-6 text-center shadow-2xl no-print">
-        <div class="max-w-4xl mx-auto">
-            <h1 style="font-family: 'Cinzel', serif;" class="text-3xl md:text-5xl font-extrabold tracking-[0.25em]">AL GAZALI ONLINE GIRLS ACADEMY</h1>
-            <div class="h-1 w-32 bg-amber-500 mx-auto mt-4 rounded-full"></div>
-            <p class="urdu text-2xl mt-6 opacity-95">تعلیم و تربیت کا ایک عالمی اور مثالی مرکز</p>
+    <!-- Stylish Header -->
+    <header class="header-gradient text-white py-16 px-6 text-center no-print">
+        <div class="max-w-5xl mx-auto">
+            <h1 class="academy-title text-3xl md:text-5xl mb-4">AL GAZALI ONLINE GIRLS ACADEMY</h1>
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <div class="h-[1px] w-20 bg-amber-500/50"></div>
+                <span class="text-amber-400 text-xs tracking-[0.5em] font-bold uppercase">Excellence in Education</span>
+                <div class="h-[1px] w-20 bg-amber-500/50"></div>
+            </div>
+            <p class="urdu text-3xl mt-4 text-white/90 drop-shadow-lg">تعلیم و تربیت کا ایک مثالی اور معیاری مرکز</p>
             
-            <div class="mt-10 flex flex-wrap justify-center gap-4">
-                <button onclick="goHome()" class="px-8 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-xs font-bold tracking-widest border border-white/20 transition-all">DASHBOARD</button>
-                <button onclick="showAdmin()" class="px-8 py-3 bg-amber-600/20 hover:bg-amber-600/40 backdrop-blur-md rounded-xl text-xs font-bold tracking-widest border border-amber-500/40 transition-all">ADMIN PANEL</button>
+            <div class="mt-12 flex flex-wrap justify-center gap-6">
+                <button onclick="goHome()" class="group relative px-8 py-3 overflow-hidden rounded-full transition-all">
+                    <span class="absolute inset-0 bg-white/10 group-hover:bg-white/20"></span>
+                    <span class="relative text-xs font-bold tracking-widest">PORTAL HOME</span>
+                </button>
+                <button onclick="showAdmin()" class="group relative px-8 py-3 overflow-hidden rounded-full transition-all">
+                    <span class="absolute inset-0 bg-amber-600/20 group-hover:bg-amber-600/40 border border-amber-500/30"></span>
+                    <span class="relative text-xs font-bold tracking-widest">ADMINISTRATOR</span>
+                </button>
             </div>
         </div>
     </header>
 
-    <div id="main-content" class="max-w-5xl mx-auto p-4 md:p-10 -mt-8">
+    <div id="main-content" class="max-w-5xl mx-auto p-4 md:p-8 -mt-10">
         
-        <!-- Home Page / Selection -->
+        <!-- Selection View -->
         <div id="home-page" class="grid md:grid-cols-2 gap-10">
-            <!-- Result Box -->
-            <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl border-b-[10px] border-emerald-900 group">
-                <div class="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center mb-8 text-emerald-900 text-3xl group-hover:rotate-12 transition-transform">🎓</div>
-                <h2 class="text-3xl font-black text-gray-800 mb-2">Academic Result</h2>
-                <p class="text-gray-400 text-sm mb-6">Enter roll number to access digital marksheet.</p>
-                <input id="rollRes" type="text" placeholder="Roll Number" class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 text-center font-bold text-xl outline-none focus:border-emerald-700 transition-all">
-                <button onclick="fetchData('result')" class="w-full bg-emerald-900 text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-emerald-800 transition-all">VIEW REPORT CARD</button>
+            <div class="bg-white p-12 rounded-[3rem] shadow-2xl border-t-8 border-emerald-900 transform hover:-translate-y-2 transition-all">
+                <div class="text-5xl mb-6">📜</div>
+                <h2 class="text-3xl font-black text-gray-800 mb-4 uppercase italic">Official Result</h2>
+                <p class="text-gray-400 mb-8">Download your verified academic marksheet.</p>
+                <input id="rollRes" type="text" placeholder="Enter Roll Number" class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 text-center font-bold text-xl focus:border-emerald-700 outline-none">
+                <button onclick="fetchData('result')" class="w-full bg-emerald-900 text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:shadow-2xl transition-all">VIEW MARKSHEET</button>
             </div>
 
-            <!-- Admit Card Box -->
-            <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl border-b-[10px] border-amber-600 group">
-                <div class="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mb-8 text-amber-800 text-3xl group-hover:rotate-12 transition-transform">📇</div>
-                <h2 class="text-3xl font-black text-gray-800 mb-2">Admit Card</h2>
-                <p class="text-gray-400 text-sm mb-6">Download official entry permit for exams.</p>
-                <input id="rollAdmit" type="text" placeholder="Roll Number" class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 text-center font-bold text-xl outline-none focus:border-amber-600 transition-all">
-                <button onclick="fetchData('admit')" class="w-full btn-gold py-5 rounded-2xl font-bold text-lg shadow-lg">GET ADMIT CARD</button>
+            <div class="bg-white p-12 rounded-[3rem] shadow-2xl border-t-8 border-amber-600 transform hover:-translate-y-2 transition-all">
+                <div class="text-5xl mb-6">🎟️</div>
+                <h2 class="text-3xl font-black text-gray-800 mb-4 uppercase italic">Admit Card</h2>
+                <p class="text-gray-400 mb-8">Generate entrance permit for examinations.</p>
+                <input id="rollAdmit" type="text" placeholder="Enter Roll Number" class="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl mb-6 text-center font-bold text-xl focus:border-amber-600 outline-none">
+                <button onclick="fetchData('admit')" class="w-full btn-gold py-5 rounded-2xl font-bold text-lg shadow-lg">GENERATE CARD</button>
             </div>
         </div>
 
-        <!-- Result Marksheet (High-End Design) -->
-        <div id="result-page" class="hidden premium-border mt-4">
+        <!-- Result/Marksheet Display -->
+        <div id="result-page" class="hidden premium-border bg-white p-4">
             <div class="inner-frame">
-                <div class="watermark">AL GAZALI ACADEMY</div>
+                <div class="watermark text-center">AL GAZALI</div>
                 
                 <div class="text-center border-b-4 border-double border-emerald-900 pb-8 mb-10">
-                    <h2 style="font-family: 'Cinzel', serif;" class="text-3xl md:text-4xl font-black text-emerald-900">AL GAZALI ONLINE GIRLS ACADEMY</h2>
-                    <p class="text-[11px] tracking-[0.5em] font-bold text-amber-700 mt-3 uppercase">Official Academic Transcript & Achievement Record</p>
+                    <h2 class="academy-title text-2xl md:text-4xl text-emerald-900 !-webkit-text-fill-color-inherit">AL GAZALI ONLINE GIRLS ACADEMY</h2>
+                    <p class="text-[10px] tracking-[0.6em] font-bold text-amber-700 mt-4 uppercase">Certificate of Academic Achievement</p>
                     <p class="urdu text-2xl mt-4 font-bold text-emerald-800">سالانہ تعلیمی رپورٹ کارڈ</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-10 text-sm mb-12 bg-gray-50 p-6 rounded-2xl border-l-4 border-emerald-900">
+                <div class="grid grid-cols-2 gap-8 text-sm mb-10 bg-emerald-50/30 p-8 rounded-3xl border border-emerald-100">
                     <div class="space-y-4">
-                        <p><span class="text-gray-400 font-bold uppercase block text-[10px]">Student Full Name</span> <span id="resName" class="text-xl font-bold text-emerald-900"></span></p>
-                        <p><span class="text-gray-400 font-bold uppercase block text-[10px]">Guardian Name</span> <span id="resFather" class="font-bold"></span></p>
+                        <p><span class="text-gray-400 font-bold uppercase text-[9px] block">Student Name</span> <span id="resName" class="text-xl font-bold text-emerald-900"></span></p>
+                        <p><span class="text-gray-400 font-bold uppercase text-[9px] block">Father/Guardian</span> <span id="resFather" class="font-bold"></span></p>
                     </div>
                     <div class="text-right space-y-4">
-                        <p><span class="text-gray-400 font-bold uppercase block text-[10px]">Roll Number</span> <span id="resRoll" class="text-xl font-mono font-bold bg-white border px-4 py-1 rounded-lg"></span></p>
-                        <p><span class="text-gray-400 font-bold uppercase block text-[10px]">Academic Class</span> <span id="resClass" class="font-bold"></span></p>
+                        <p><span class="text-gray-400 font-bold uppercase text-[9px] block">Roll Number</span> <span id="resRoll" class="text-xl font-black tracking-widest text-emerald-900"></span></p>
+                        <p><span class="text-gray-400 font-bold uppercase text-[9px] block">Class/Section</span> <span id="resClass" class="font-bold"></span></p>
                     </div>
                 </div>
 
-                <table class="w-full mb-12 border-separate border-spacing-y-2">
+                <table class="w-full text-sm mb-12 border-separate border-spacing-y-1">
                     <thead>
-                        <tr class="text-emerald-900 text-xs font-black uppercase tracking-widest">
-                            <th class="p-4 text-left border-b-2 border-emerald-900">Subject Details</th>
-                            <th class="p-4 text-center border-b-2 border-emerald-900">Max</th>
-                            <th class="p-4 text-center border-b-2 border-emerald-900">Obtained</th>
+                        <tr class="bg-emerald-900 text-white text-[10px] tracking-widest uppercase">
+                            <th class="p-4 text-left rounded-l-lg">Subject Description</th>
+                            <th class="p-4 text-center">Max Marks</th>
+                            <th class="p-4 text-center rounded-r-lg">Marks Obtained</th>
                         </tr>
                     </thead>
-                    <tbody id="resMarksBody"></tbody>
+                    <tbody id="resMarksBody" class="text-gray-700"></tbody>
                     <tfoot>
-                        <tr class="bg-emerald-900 text-white shadow-xl">
-                            <td colspan="2" class="p-6 text-right font-bold text-lg rounded-l-2xl">GRAND TOTAL MARKS</td>
-                            <td id="resTotal" class="p-6 text-center text-2xl font-black rounded-r-2xl bg-amber-600"></td>
+                        <tr class="bg-amber-600 text-white shadow-xl">
+                            <td colspan="2" class="p-6 text-right font-black text-lg rounded-l-2xl uppercase italic">Grand Total Aggregate</td>
+                            <td id="resTotal" class="p-6 text-center text-3xl font-black rounded-r-2xl bg-amber-700"></td>
                         </tr>
                     </tfoot>
                 </table>
 
-                <div class="mt-24 grid grid-cols-3 gap-10 items-center">
-                    <div class="text-center">
-                        <div class="border-t-2 border-gray-200 pt-3">
-                            <p class="text-[10px] font-black text-gray-400 uppercase">Controller of Exams</p>
+                <div class="mt-32 flex justify-between items-end px-10">
+                    <div class="text-center w-40">
+                        <div class="border-t-2 border-emerald-900 pt-3">
+                            <p class="text-[9px] font-black text-emerald-900 uppercase">Exam Incharge</p>
                         </div>
                     </div>
                     <div class="flex justify-center">
-                        <div class="w-32 h-32 border-8 border-double border-emerald-50 rounded-full flex items-center justify-center text-[10px] text-emerald-100 font-bold rotate-12">OFFICIAL STAMP</div>
+                        <div class="w-24 h-24 border-4 border-double border-amber-200 rounded-full flex items-center justify-center text-[8px] text-amber-300 font-bold rotate-12">Verified Office Stamp</div>
                     </div>
-                    <div class="text-center">
-                        <div class="border-t-2 border-gray-200 pt-3">
-                            <p class="text-[10px] font-black text-gray-400 uppercase">Principal Signature</p>
+                    <div class="text-center w-40">
+                        <div class="border-t-2 border-emerald-900 pt-3">
+                            <p class="text-[9px] font-black text-emerald-900 uppercase">Principal Signature</p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="no-print p-10 bg-gray-50 flex gap-4">
-                <button onclick="window.print()" class="flex-1 bg-black text-white py-5 rounded-2xl font-bold shadow-xl">PRINT TRANSCRIPT</button>
-                <button onclick="goHome()" class="px-10 bg-white border py-5 rounded-2xl text-gray-400 font-bold">EXIT</button>
+            <div class="no-print p-8 bg-gray-50 flex gap-4 mt-6 rounded-3xl">
+                <button onclick="window.print()" class="flex-1 bg-emerald-900 text-white py-5 rounded-2xl font-black shadow-xl">PRINT DOCUMENT</button>
+                <button onclick="goHome()" class="px-10 bg-white border py-5 rounded-2xl text-gray-400 font-bold">CANCEL</button>
             </div>
         </div>
 
-        <!-- Admin Panel -->
-        <div id="admin-page" class="hidden bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 mt-6">
-            <h2 class="text-3xl font-black mb-10 text-center text-emerald-900 uppercase tracking-tighter">School Admin Portal</h2>
+        <!-- Admin Portal -->
+        <div id="admin-page" class="hidden bg-white p-12 rounded-[3.5rem] shadow-2xl border border-gray-100 mt-6">
+            <h2 class="academy-title text-2xl text-center mb-10 !-webkit-text-fill-color-inherit text-emerald-900">ACADEMY RECORDS MANAGEMENT</h2>
             
-            <div id="admin-login-sec" class="max-w-md mx-auto text-center space-y-6">
-                <p class="text-gray-400 text-sm">Enter secure access code to manage records.</p>
-                <input id="adminPass" type="password" placeholder="••••" class="w-full p-6 bg-gray-50 border-2 rounded-3xl text-center text-3xl tracking-[1em] focus:border-emerald-600 outline-none">
-                <button onclick="adminLogin()" class="w-full bg-emerald-900 text-white py-5 rounded-3xl font-bold text-lg shadow-lg">LOGIN SYSTEM</button>
+            <div id="admin-login-sec" class="max-w-xs mx-auto text-center space-y-6">
+                <input id="adminPass" type="password" placeholder="Passcode" class="w-full p-6 bg-gray-50 border-2 rounded-3xl text-center text-2xl focus:border-emerald-900 outline-none">
+                <button onclick="adminLogin()" class="w-full bg-emerald-900 text-white py-5 rounded-3xl font-bold shadow-lg">AUTHORIZE ACCESS</button>
             </div>
 
-            <div id="admin-fields" class="hidden space-y-10">
+            <div id="admin-fields" class="hidden space-y-8 animate-in fade-in duration-700">
                 <div class="grid md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label class="text-[10px] font-black text-gray-400 ml-4 uppercase">Student Full Name</label>
-                        <input id="nName" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 ml-4 uppercase">Roll Number (Unique)</label>
-                        <input id="nRoll" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 ml-4 uppercase">Father/Guardian</label>
-                        <input id="nFather" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100 outline-none">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="text-[10px] font-black text-gray-400 ml-4 uppercase">Class/Grade</label>
-                        <input id="nClass" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100 outline-none">
-                    </div>
+                    <div class="col-span-2"><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Full Student Name</label><input id="nName" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
+                    <div><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Roll Number</label><input id="nRoll" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
+                    <div><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Father Name</label><input id="nFather" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
+                    <div class="col-span-2"><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Class/Grade</label><input id="nClass" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
                 </div>
 
-                <div class="bg-emerald-50 p-8 rounded-[2rem]">
-                    <h4 class="text-sm font-black text-emerald-900 mb-6 flex items-center gap-2">
-                        <span>📝</span> SUBJECT CONFIGURATION (6 MAX)
-                    </h4>
+                <div class="bg-amber-50/50 p-8 rounded-3xl border border-amber-100">
+                    <h4 class="text-xs font-black text-amber-800 mb-6 uppercase tracking-widest">Enter Subjects & Marks</h4>
                     <div id="subjects-grid" class="grid md:grid-cols-2 gap-4">
-                        <!-- 6 Dynamic Subject Inputs -->
-                        <div class="flex gap-2"><input placeholder="Sub 1 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
-                        <div class="flex gap-2"><input placeholder="Sub 2 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
-                        <div class="flex gap-2"><input placeholder="Sub 3 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
-                        <div class="flex gap-2"><input placeholder="Sub 4 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
-                        <div class="flex gap-2"><input placeholder="Sub 5 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
-                        <div class="flex gap-2"><input placeholder="Sub 6 Name" class="s-name w-2/3 p-3 border rounded-xl"><input placeholder="Marks" class="s-mark w-1/3 p-3 border rounded-xl text-center"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
+                        <div class="flex gap-2"><input placeholder="Subject Name" class="s-name w-2/3 p-4 border rounded-2xl bg-white"><input placeholder="Marks" class="s-mark w-1/3 p-4 border rounded-2xl text-center font-bold"></div>
                     </div>
                 </div>
 
-                <button id="saveBtn" onclick="saveData()" class="w-full bg-emerald-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl hover:bg-emerald-800 transition-all">PUBLISH TO DATABASE</button>
+                <button id="saveBtn" onclick="saveData()" class="w-full bg-emerald-900 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl hover:bg-emerald-800 transition-all">PUBLISH OFFICIAL RECORD</button>
             </div>
-            <button onclick="goHome()" class="w-full text-xs text-gray-300 mt-10 hover:text-gray-500 uppercase font-bold tracking-widest transition-all">Back to Portal</button>
+            <button onclick="goHome()" class="w-full text-xs text-gray-400 mt-10 uppercase font-black tracking-widest">Return to Home</button>
         </div>
     </div>
 
     <script>
         let db, appId;
 
-        // Debugged Initialization
-        function initFirebase() {
+        async function startApp() {
             try {
-                // Check if config exists
-                if (typeof __firebase_config === 'undefined') {
-                    console.error("Firebase config missing!");
-                    return;
-                }
+                if (typeof __firebase_config === 'undefined') return;
                 const config = JSON.parse(__firebase_config);
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(config);
-                }
+                if (!firebase.apps.length) firebase.initializeApp(config);
                 db = firebase.firestore();
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-prod-v1';
-                
-                firebase.auth().signInAnonymously().catch(e => console.error("Auth Error:", e));
-                console.log("Firebase System Online");
-            } catch(e) {
-                console.error("Init Error:", e);
-            }
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-academy-v1';
+                await firebase.auth().signInAnonymously();
+            } catch(e) { console.error("Database Connection Issue", e); }
         }
-        window.onload = initFirebase;
+        window.onload = startApp;
 
         function goHome() {
-            ['home-page', 'result-page', 'admin-page'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.querySelectorAll('#home-page, #result-page, #admin-page').forEach(e => e.classList.add('hidden'));
             document.getElementById('home-page').classList.remove('hidden');
         }
 
         function showAdmin() {
-            ['home-page', 'result-page', 'admin-page'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.querySelectorAll('#home-page, #result-page, #admin-page').forEach(e => e.classList.add('hidden'));
             document.getElementById('admin-page').classList.remove('hidden');
         }
 
@@ -250,80 +242,50 @@
             if(document.getElementById('adminPass').value === '1234') {
                 document.getElementById('admin-login-sec').classList.add('hidden');
                 document.getElementById('admin-fields').classList.remove('hidden');
-            } else { alert("INVALID ACCESS CODE"); }
+            } else { alert("ACCESS DENIED: INCORRECT PASSCODE"); }
         }
 
         async function saveData() {
-            if (!db) {
-                alert("Database abhi load ho raha hai, 2 second ruk kar try karein.");
-                initFirebase();
-                return;
-            }
+            if (!db) { await startApp(); if(!db) return alert("System connecting... Please try again."); }
 
             const roll = document.getElementById('nRoll').value.trim();
             const name = document.getElementById('nName').value.trim();
-            
-            if(!roll || !name) {
-                alert("Roll Number aur Name zaroori hai!");
-                return;
-            }
+            if(!roll || !name) return alert("Error: Name and Roll Number are mandatory.");
 
-            const subNames = document.querySelectorAll('.s-name');
-            const subMarks = document.querySelectorAll('.s-mark');
             const subjects = [];
-
-            subNames.forEach((el, i) => {
-                if(el.value.trim()) {
-                    subjects.push({ 
-                        name: el.value.trim(), 
-                        marks: subMarks[i].value.trim() || "0" 
-                    });
-                }
+            document.querySelectorAll('.s-name').forEach((el, i) => {
+                const mark = document.querySelectorAll('.s-mark')[i].value.trim();
+                if(el.value.trim()) subjects.push({ name: el.value.trim(), marks: mark || "0" });
             });
 
             const btn = document.getElementById('saveBtn');
-            btn.innerText = "SYNCHRONIZING...";
-            btn.disabled = true;
+            btn.innerText = "SYNCHRONIZING..."; btn.disabled = true;
 
             try {
-                // Correct Path as per Rule 1
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).set({
-                    rollNo: roll,
-                    name: name,
+                const path = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll);
+                await path.set({
+                    rollNo: roll, name: name,
                     father: document.getElementById('nFather').value.trim(),
                     class: document.getElementById('nClass').value.trim(),
                     subjects: subjects,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    published: new Date().toLocaleDateString()
                 });
-                
-                alert("DATA PUBLISHED SUCCESSFULLY!");
-                location.reload(); // Reload to clear fields
-            } catch(e) {
-                console.error(e);
-                alert("Error: " + e.message);
-            }
-            btn.innerText = "PUBLISH TO DATABASE";
-            btn.disabled = false;
+                alert("SUCCESS: Official Record has been published.");
+                location.reload();
+            } catch(e) { alert("Publishing Error: " + e.message); }
+            btn.innerText = "PUBLISH OFFICIAL RECORD"; btn.disabled = false;
         }
 
         async function fetchData(mode) {
-            const rollId = mode === 'result' ? 'rollRes' : 'rollAdmit';
-            const roll = document.getElementById(rollId).value.trim();
-            
-            if(!roll) return alert("Roll number enter karein");
+            const rollInput = mode === 'result' ? 'rollRes' : 'rollAdmit';
+            const roll = document.getElementById(rollInput).value.trim();
+            if(!roll) return alert("Please enter Roll Number");
 
             try {
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).get();
-                
-                if(doc.exists) {
-                    const data = doc.data();
-                    displayResult(data);
-                } else {
-                    alert("Is Roll Number ka koi record nahi mila.");
-                }
-            } catch(e) {
-                alert("Network connection check karein.");
-            }
+                if(doc.exists) displayResult(doc.data());
+                else alert("Data not found for this Roll Number.");
+            } catch(e) { alert("Server is busy, try again in a moment."); }
         }
 
         function displayResult(data) {
@@ -340,9 +302,9 @@
             data.subjects.forEach(s => {
                 rows += `
                 <tr class="bg-white hover:bg-emerald-50 transition-colors">
-                    <td class="p-4 border-b border-gray-100 font-bold text-gray-700 uppercase">${s.name}</td>
-                    <td class="p-4 border-b border-gray-100 text-center text-gray-400 font-bold">100</td>
-                    <td class="p-4 border-b border-gray-100 text-center font-black text-emerald-900 bg-emerald-50/50">${s.marks}</td>
+                    <td class="p-5 border-b border-gray-100 font-black text-gray-800 uppercase italic text-[12px]">${s.name}</td>
+                    <td class="p-5 border-b border-gray-100 text-center text-gray-400 font-bold">100</td>
+                    <td class="p-5 border-b border-gray-100 text-center font-black text-emerald-900 bg-emerald-50/30 text-lg">${s.marks}</td>
                 </tr>`;
                 total += Number(s.marks);
             });
