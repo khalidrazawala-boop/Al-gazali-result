@@ -17,7 +17,6 @@
         body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; color: #1e293b; overflow-x: hidden; }
         .urdu { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
         
-        /* Stylish Academy Name */
         .academy-title {
             font-family: 'Cinzel', serif;
             letter-spacing: 0.15em;
@@ -72,7 +71,7 @@
 </head>
 <body>
 
-    <!-- Stylish Header -->
+    <!-- Header Section -->
     <header class="header-gradient text-white py-16 px-6 text-center no-print">
         <div class="max-w-5xl mx-auto">
             <h1 class="academy-title text-3xl md:text-5xl mb-4">AL GAZALI ONLINE GIRLS ACADEMY</h1>
@@ -187,7 +186,7 @@
                 <button onclick="adminLogin()" class="w-full bg-emerald-900 text-white py-5 rounded-3xl font-bold shadow-lg">AUTHORIZE ACCESS</button>
             </div>
 
-            <div id="admin-fields" class="hidden space-y-8 animate-in fade-in duration-700">
+            <div id="admin-fields" class="hidden space-y-8">
                 <div class="grid md:grid-cols-2 gap-6">
                     <div class="col-span-2"><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Full Student Name</label><input id="nName" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
                     <div><label class="text-[10px] font-bold text-emerald-900 uppercase ml-4">Roll Number</label><input id="nRoll" class="w-full p-4 bg-gray-50 border rounded-2xl mt-1 focus:ring-2 ring-emerald-100"></div>
@@ -214,19 +213,27 @@
     </div>
 
     <script>
-        let db, appId;
+        let db = null;
+        let appId = 'al-gazali-academy-v1';
 
-        async function startApp() {
+        async function initFirebase() {
             try {
-                if (typeof __firebase_config === 'undefined') return;
-                const config = JSON.parse(__firebase_config);
-                if (!firebase.apps.length) firebase.initializeApp(config);
-                db = firebase.firestore();
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-academy-v1';
-                await firebase.auth().signInAnonymously();
-            } catch(e) { console.error("Database Connection Issue", e); }
+                if (typeof __firebase_config !== 'undefined') {
+                    const config = JSON.parse(__firebase_config);
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
+                    }
+                    db = firebase.firestore();
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-academy-v1';
+                    await firebase.auth().signInAnonymously();
+                    console.log("Firebase initialized successfully");
+                }
+            } catch(e) { 
+                console.error("Firebase Initialization Error:", e);
+            }
         }
-        window.onload = startApp;
+
+        window.onload = initFirebase;
 
         function goHome() {
             document.querySelectorAll('#home-page, #result-page, #admin-page').forEach(e => e.classList.add('hidden'));
@@ -246,25 +253,35 @@
         }
 
         async function saveData() {
-            if (!db) { await startApp(); if(!db) return alert("System connecting... Please try again."); }
+            // Check if db is ready, if not try initializing again
+            if (!db) {
+                await initFirebase();
+                if (!db) return alert("System connecting... Database is taking time to load. Please wait 5 seconds and try again.");
+            }
 
             const roll = document.getElementById('nRoll').value.trim();
             const name = document.getElementById('nName').value.trim();
             if(!roll || !name) return alert("Error: Name and Roll Number are mandatory.");
 
             const subjects = [];
-            document.querySelectorAll('.s-name').forEach((el, i) => {
-                const mark = document.querySelectorAll('.s-mark')[i].value.trim();
-                if(el.value.trim()) subjects.push({ name: el.value.trim(), marks: mark || "0" });
+            const names = document.querySelectorAll('.s-name');
+            const marks = document.querySelectorAll('.s-mark');
+            
+            names.forEach((el, i) => {
+                const mark = marks[i].value.trim();
+                if(el.value.trim()) {
+                    subjects.push({ name: el.value.trim(), marks: mark || "0" });
+                }
             });
 
             const btn = document.getElementById('saveBtn');
             btn.innerText = "SYNCHRONIZING..."; btn.disabled = true;
 
             try {
-                const path = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll);
-                await path.set({
-                    rollNo: roll, name: name,
+                // Simplified path to avoid initialization errors
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(roll).set({
+                    rollNo: roll, 
+                    name: name,
                     father: document.getElementById('nFather').value.trim(),
                     class: document.getElementById('nClass').value.trim(),
                     subjects: subjects,
@@ -272,11 +289,17 @@
                 });
                 alert("SUCCESS: Official Record has been published.");
                 location.reload();
-            } catch(e) { alert("Publishing Error: " + e.message); }
-            btn.innerText = "PUBLISH OFFICIAL RECORD"; btn.disabled = false;
+            } catch(e) { 
+                console.error(e);
+                alert("Publishing Error: " + e.message); 
+            } finally {
+                btn.innerText = "PUBLISH OFFICIAL RECORD"; 
+                btn.disabled = false;
+            }
         }
 
         async function fetchData(mode) {
+            if (!db) await initFirebase();
             const rollInput = mode === 'result' ? 'rollRes' : 'rollAdmit';
             const roll = document.getElementById(rollInput).value.trim();
             if(!roll) return alert("Please enter Roll Number");
