@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK - Reliable Legacy Version -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -19,15 +19,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f1f5f9; color: #1e293b; }
-        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif !important; line-height: 2.5; }
-        .glass { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .btn-primary { background: #064e3b; color: white; transition: all 0.2s; }
-        .btn-primary:hover { background: #065f46; }
-        .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
-        .input-box { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; transition: 0.2s; font-weight: 600; }
-        .input-box:focus { border-color: #064e3b; }
-        @media print { .no-print { display: none !important; } }
+        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif !important; line-height: 2.2; }
+        .glass-card { background: white; border-radius: 24px; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        .input-style { border: 2px solid #f1f5f9; border-radius: 12px; padding: 12px; font-weight: 600; transition: 0.3s; width: 100%; outline: none; }
+        .input-style:focus { border-color: #064e3b; background: #f0fdf4; }
+        .btn-main { background: #064e3b; color: white; border-radius: 12px; font-weight: 700; transition: 0.2s; border: none; cursor: pointer; }
+        .btn-main:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-main:disabled { background: #cbd5e1; cursor: not-allowed; }
+        @media print { .no-print { display: none !important; } .print-area { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; } }
     </style>
 </head>
 <body>
@@ -39,138 +39,171 @@
         const App = () => {
             const [view, setView] = useState('home');
             const [db, setDb] = useState(null);
-            const [loading, setLoading] = useState(false);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [loading, setLoading] = useState(false);
             const [rollNoInput, setRollNoInput] = useState('');
             const [studentData, setStudentData] = useState(null);
-            
+
+            // Empty Subject Fields for manual typing
             const initialForm = {
                 name: '', rollNo: '', father: '', className: '', session: '2024-25',
                 subjects: [
-                    { name: 'Quran', marks: '' }, { name: 'Hadees', marks: '' },
-                    { name: 'Fiqh', marks: '' }, { name: 'Sarf', marks: '' },
-                    { name: 'Nahev', marks: '' }, { name: 'Adab', marks: '' }
+                    { name: '', marks: '' }, { name: '', marks: '' },
+                    { name: '', marks: '' }, { name: '', marks: '' },
+                    { name: '', marks: '' }, { name: '', marks: '' }
                 ]
             };
             const [entry, setEntry] = useState(initialForm);
 
-            // Firebase Quick Init
+            // Immediate Firebase Initialization
             useEffect(() => {
-                const init = async () => {
+                const setup = async () => {
                     try {
                         const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
                         if (!config) return;
-
                         if (!firebase.apps.length) firebase.initializeApp(config);
                         
-                        // Force login to ensure connection
+                        // Auth to bypass permission issues
                         await firebase.auth().signInAnonymously();
                         setDb(firebase.firestore());
-                    } catch (e) {
-                        console.error("Firebase Connection Failed", e);
+                        console.log("Database Connected Successfully");
+                    } catch (err) {
+                        console.error("Connection Error:", err);
                     }
                 };
-                init();
+                setup();
             }, []);
 
-            const saveStudent = async () => {
-                if (!db) return alert("System connect nahi ho raha. Page refresh karein.");
-                if (!entry.rollNo || !entry.name) return alert("Naam aur Roll No likhna lazmi hai.");
+            // Demo Data to test saving
+            const fillDemo = () => {
+                setEntry({
+                    name: 'Maryam Bibi', rollNo: '1001', father: 'Abdul Rahman', className: 'Ula', session: '2024-25',
+                    subjects: [
+                        { name: 'Quran', marks: '95' }, { name: 'Hadees', marks: '88' },
+                        { name: 'Fiqh', marks: '92' }, { name: 'Adab', marks: '85' },
+                        { name: 'Sarf', marks: '78' }, { name: 'Nahev', marks: '82' }
+                    ]
+                });
+            };
+
+            const handleSave = async () => {
+                // Check if DB exists, if not, try to get it again
+                const firestore = db || (firebase.apps.length ? firebase.firestore() : null);
+                
+                if (!firestore) {
+                    alert("System loading ho raha hai... 3 second baad phir click karein.");
+                    return;
+                }
+                
+                if (!entry.rollNo || !entry.name) {
+                    alert("Roll Number aur Naam likhna lazmi hai!");
+                    return;
+                }
 
                 setLoading(true);
                 try {
                     const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
-                    // Path correction for maximum compatibility
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(entry.rollNo).set({
-                        ...entry,
-                        updatedAt: new Date().toISOString()
+                    // Using path according to Rule 1
+                    const docRef = firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(entry.rollNo);
+                    
+                    await docRef.set({ 
+                        ...entry, 
+                        lastSaved: new Date().toISOString() 
                     });
                     
-                    alert("Kamyabi! Record Save Ho Gaya.");
+                    alert("Mubarak! Data Save Ho Gaya.");
                     setEntry(initialForm);
-                } catch (err) {
-                    alert("Error Saving: " + err.message);
+                } catch (e) {
+                    alert("Save Nahi Hua! Error: " + e.message);
                 } finally {
                     setLoading(false);
                 }
             };
 
-            const searchStudent = async (target) => {
-                if (!rollNoInput) return alert("Pehle Roll No likhein.");
-                if (!db) return alert("Connecting... please wait.");
+            const handleSearch = async (target) => {
+                const firestore = db || (firebase.apps.length ? firebase.firestore() : null);
+                if (!rollNoInput) return alert("Pehle Roll Number likhein.");
+                if (!firestore) return alert("System connecting...");
 
                 setLoading(true);
                 try {
                     const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
-                    const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(rollNoInput).get();
+                    const doc = await firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(rollNoInput).get();
                     
                     if (doc.exists) {
                         setStudentData(doc.data());
                         setView(target);
                     } else {
-                        alert("Record nahi mila! Roll no check karein.");
+                        alert("Is Roll No ka koi record nahi mila.");
                     }
                 } catch (e) {
-                    alert("Error: " + e.message);
+                    alert("Search Error: " + e.message);
                 } finally {
                     setLoading(false);
                 }
             };
 
             return (
-                <div className="min-h-screen">
-                    <header className="bg-[#064e3b] text-white p-8 text-center no-print shadow-lg">
-                        <h1 className="text-2xl md:text-4xl font-black mb-2 tracking-tight">AL GAZALI ONLINE GIRLS ACADEMY</h1>
-                        <p className="urdu-font text-2xl opacity-90">تعلیم و تربیت کا بہترین مرکز</p>
+                <div className="min-h-screen pb-20">
+                    <header className="bg-[#064e3b] text-white py-12 px-6 text-center no-print shadow-xl">
+                        <h1 className="text-3xl md:text-5xl font-black mb-3">AL GAZALI ONLINE ACADEMY</h1>
+                        <p className="urdu-font text-3xl opacity-90">تعلیم و تربیت کا بہترین مرکز</p>
                     </header>
 
-                    <main className="max-w-2xl mx-auto p-4 -mt-8">
+                    <main className="max-w-xl mx-auto px-4 -mt-10">
                         {view === 'home' && (
                             <div className="space-y-6">
-                                <div className="glass p-8 text-center border-t-8 border-[#064e3b]">
+                                <div className="glass-card p-8 text-center border-t-8 border-emerald-900">
                                     <h2 className="text-xs font-bold text-gray-400 mb-6 uppercase tracking-widest">Student Portal</h2>
                                     <input 
                                         type="text" 
-                                        placeholder="Enter Roll Number" 
-                                        className="input-box text-2xl mb-4 bg-emerald-50"
+                                        placeholder="ROLL NUMBER LIKHEIN" 
+                                        className="input-style text-2xl text-center mb-6 bg-gray-50 shadow-inner"
                                         value={rollNoInput}
                                         onChange={e => setRollNoInput(e.target.value)}
                                     />
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => searchStudent('result')} className="btn-primary py-4 rounded-xl font-bold">VIEW RESULT</button>
-                                        <button onClick={() => searchStudent('admit')} className="bg-white border-2 border-[#064e3b] text-[#064e3b] py-4 rounded-xl font-bold">ADMIT CARD</button>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button onClick={() => handleSearch('result')} className="btn-main py-4 shadow-lg shadow-emerald-100">VIEW RESULT</button>
+                                        <button onClick={() => handleSearch('admit')} className="bg-white border-2 border-[#064e3b] text-[#064e3b] py-4 rounded-xl font-bold">ADMIT CARD</button>
                                     </div>
                                 </div>
-                                <button onClick={() => setView('admin')} className="w-full text-gray-400 font-bold text-[10px] uppercase tracking-widest py-4">Admin Dashboard</button>
+                                <button onClick={() => setView('admin')} className="w-full text-gray-400 font-bold text-[10px] uppercase py-4">Admin Access</button>
                             </div>
                         )}
 
                         {view === 'admin' && (
-                            <div className="glass p-6 md:p-8 border-t-8 border-orange-500">
+                            <div className="glass-card p-6 md:p-8">
                                 {!isLoggedIn ? (
-                                    <div className="py-10 text-center">
-                                        <h2 className="font-bold text-xl mb-6">Staff Authentication</h2>
-                                        <input id="ps" type="password" placeholder="Passcode (1234)" className="input-box mb-4 text-center" />
+                                    <div className="py-6 text-center">
+                                        <h2 className="font-bold text-xl mb-6">Staff Login</h2>
+                                        <input id="pass" type="password" placeholder="Passcode (1234)" className="input-style mb-4 text-center" />
                                         <div className="flex gap-2">
-                                            <button onClick={() => document.getElementById('ps').value === '1234' ? setIsLoggedIn(true) : alert("Wrong Password")} className="flex-1 btn-primary py-4 rounded-xl font-bold">Login</button>
+                                            <button onClick={() => document.getElementById('pass').value === '1234' ? setIsLoggedIn(true) : alert("Wrong Password")} className="flex-1 btn-main py-4">Login</button>
                                             <button onClick={() => setView('home')} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold">Back</button>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        <h2 className="font-black text-[#064e3b] border-b pb-2">UPLOAD NEW RESULT</h2>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h2 className="font-black text-[#064e3b] text-xl uppercase">Result Entry</h2>
+                                            <button onClick={fillDemo} className="bg-blue-600 text-white px-4 py-1 rounded-full text-[10px] font-bold">FILL DEMO</button>
+                                        </div>
+                                        
                                         <div className="grid grid-cols-2 gap-3">
-                                            <input placeholder="Name" className="input-box text-sm text-left" value={entry.name} onChange={e => setEntry({...entry, name: e.target.value})} />
-                                            <input placeholder="Roll No" className="input-box text-sm text-left" value={entry.rollNo} onChange={e => setEntry({...entry, rollNo: e.target.value})} />
-                                            <input placeholder="Father" className="input-box text-sm text-left" value={entry.father} onChange={e => setEntry({...entry, father: e.target.value})} />
-                                            <input placeholder="Class" className="input-box text-sm text-left" value={entry.className} onChange={e => setEntry({...entry, className: e.target.value})} />
+                                            <input placeholder="Student Name" className="input-style text-sm" value={entry.name} onChange={e => setEntry({...entry, name: e.target.value})} />
+                                            <input placeholder="Roll Number" className="input-style text-sm" value={entry.rollNo} onChange={e => setEntry({...entry, rollNo: e.target.value})} />
+                                            <input placeholder="Father Name" className="input-style text-sm" value={entry.father} onChange={e => setEntry({...entry, father: e.target.value})} />
+                                            <input placeholder="Class Name" className="input-style text-sm" value={entry.className} onChange={e => setEntry({...entry, className: e.target.value})} />
                                         </div>
 
-                                        <div className="bg-gray-50 p-4 rounded-2xl grid grid-cols-2 gap-2">
+                                        <p className="text-[10px] font-bold text-emerald-700 mt-4 uppercase">Type Subject Name & Marks Below:</p>
+                                        <div className="bg-emerald-50 p-4 rounded-2xl grid grid-cols-1 gap-2 border border-emerald-100">
                                             {entry.subjects.map((s, i) => (
-                                                <div key={i} className="flex bg-white rounded-lg p-2 items-center border shadow-sm">
-                                                    <span className="text-[10px] font-bold flex-1 text-emerald-900">{s.name}</span>
-                                                    <input type="number" className="w-12 text-center font-bold outline-none border-l ml-2" value={s.marks} onChange={e => {
+                                                <div key={i} className="flex gap-2">
+                                                    <input placeholder={`Subject Name ${i+1}`} className="flex-1 p-3 rounded-xl border text-sm font-bold bg-white" value={s.name} onChange={e => {
+                                                        const n = [...entry.subjects]; n[i].name = e.target.value; setEntry({...entry, subjects: n});
+                                                    }} />
+                                                    <input type="number" placeholder="Marks" className="w-20 p-3 rounded-xl border text-sm font-bold text-center bg-white" value={s.marks} onChange={e => {
                                                         const n = [...entry.subjects]; n[i].marks = e.target.value; setEntry({...entry, subjects: n});
                                                     }} />
                                                 </div>
@@ -179,62 +212,62 @@
 
                                         <button 
                                             disabled={loading}
-                                            onClick={saveStudent}
-                                            className="w-full py-5 btn-primary rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 mt-4 disabled:opacity-50"
+                                            onClick={handleSave}
+                                            className="w-full py-5 btn-main rounded-2xl text-xl shadow-xl shadow-emerald-200 mt-6"
                                         >
                                             {loading ? 'SAVING DATA...' : 'SAVE & PUBLISH'}
                                         </button>
-                                        <button onClick={() => { setIsLoggedIn(false); setView('home'); }} className="w-full text-red-400 font-bold text-[10px] uppercase mt-4">Logout</button>
+                                        <button onClick={() => { setIsLoggedIn(false); setView('home'); }} className="w-full text-red-400 font-bold text-[10px] mt-4 uppercase">Log Out</button>
                                     </div>
                                 )}
                             </div>
                         )}
 
                         {(view === 'result' || view === 'admit') && studentData && (
-                            <div className="glass p-2 md:p-6 bg-white">
-                                <div className="border-[10px] border-double border-emerald-900 p-6 flex flex-col min-h-[600px]">
-                                    <div className="text-center border-b-4 border-emerald-900 pb-6 mb-8">
-                                        <h2 className="text-2xl font-black text-emerald-950">AL GAZALI ONLINE GIRLS ACADEMY</h2>
+                            <div className="glass-card p-2 md:p-6 bg-white print-area">
+                                <div className="border-[8px] border-double border-emerald-950 p-4 md:p-8 min-h-[700px] flex flex-col relative">
+                                    <div className="text-center border-b-2 border-emerald-950 pb-6 mb-8">
+                                        <h2 className="text-2xl md:text-3xl font-black text-emerald-950">AL GAZALI ONLINE GIRLS ACADEMY</h2>
                                         <p className="urdu-font text-3xl text-emerald-800">تعلیم و تربیت کا بہترین مرکز</p>
-                                        <div className="mt-4 bg-emerald-950 text-white text-[10px] font-bold px-8 py-2 inline-block rounded-full uppercase">
-                                            {view === 'result' ? 'Official Marksheet' : 'Examination Admit Card'}
+                                        <div className="mt-4 bg-emerald-950 text-white text-[10px] font-bold px-10 py-2 inline-block rounded-full uppercase tracking-tighter">
+                                            {view === 'result' ? 'Official Result Sheet' : 'Examination Admit Card'}
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-x-10 gap-y-6 mb-10 text-sm">
-                                        <div className="border-b pb-1"><span className="text-[10px] text-gray-400 font-bold uppercase block">Student Name</span> <span className="font-black text-lg">{studentData.name.toUpperCase()}</span></div>
-                                        <div className="border-b pb-1 text-right"><span className="text-[10px] text-gray-400 font-bold uppercase block">Roll Number</span> <span className="font-black text-2xl text-emerald-900">{studentData.rollNo}</span></div>
-                                        <div className="border-b pb-1"><span className="text-[10px] text-gray-400 font-bold uppercase block">Father's Name</span> <span className="font-black text-lg">{studentData.father.toUpperCase()}</span></div>
-                                        <div className="border-b pb-1 text-right"><span className="text-[10px] text-gray-400 font-bold uppercase block">Class</span> <span className="font-black text-lg uppercase">{studentData.className}</span></div>
+                                    <div className="grid grid-cols-2 gap-6 mb-10 text-sm">
+                                        <div className="border-b-2 border-gray-100 pb-2"><span className="text-[10px] text-gray-400 font-bold block">NAME:</span> <span className="font-black text-lg">{studentData.name.toUpperCase()}</span></div>
+                                        <div className="border-b-2 border-gray-100 pb-2 text-right"><span className="text-[10px] text-gray-400 font-bold block">ROLL NO:</span> <span className="font-black text-2xl text-emerald-900">{studentData.rollNo}</span></div>
+                                        <div className="border-b-2 border-gray-100 pb-2"><span className="text-[10px] text-gray-400 font-bold block">FATHER:</span> <span className="font-black text-lg">{studentData.father.toUpperCase()}</span></div>
+                                        <div className="border-b-2 border-gray-100 pb-2 text-right"><span className="text-[10px] text-gray-400 font-bold block">CLASS:</span> <span className="font-black text-lg uppercase">{studentData.className}</span></div>
                                     </div>
 
                                     {view === 'result' ? (
                                         <div className="flex-1">
-                                            <table className="w-full mb-6">
-                                                <thead className="bg-emerald-900 text-white text-[10px] font-bold">
+                                            <table className="w-full mb-8">
+                                                <thead className="bg-emerald-50 text-[10px] font-black">
                                                     <tr>
-                                                        <th className="p-3 text-left rounded-l-lg">SUBJECT DESCRIPTION</th>
-                                                        <th className="p-3 text-center rounded-r-lg">MARKS</th>
+                                                        <th className="p-3 text-left">SUBJECT</th>
+                                                        <th className="p-3 text-center">OBTAINED</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="font-bold text-gray-700">
-                                                    {studentData.subjects.map((s, i) => (
-                                                        <tr key={i} className="border-b border-emerald-50">
-                                                            <td className="p-4 text-xs uppercase">{s.name}</td>
+                                                <tbody>
+                                                    {studentData.subjects.filter(s => s.name).map((s, i) => (
+                                                        <tr key={i} className="border-b border-gray-50">
+                                                            <td className="p-4 text-xs font-bold uppercase">{s.name}</td>
                                                             <td className="p-4 text-center text-xl font-black text-emerald-950">{s.marks || '00'}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
-                                            <div className="bg-emerald-950 text-white p-6 rounded-2xl flex items-center shadow-lg">
-                                                <div className="flex-1 font-black text-lg">AGGREGATE TOTAL</div>
+                                            <div className="mt-auto bg-emerald-950 text-white p-6 rounded-3xl flex items-center shadow-2xl">
+                                                <div className="flex-1 font-black text-lg">TOTAL MARKS</div>
                                                 <div className="text-4xl font-black">{studentData.subjects.reduce((a, b) => a + (Number(b.marks) || 0), 0)}</div>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex-1 flex flex-col items-center justify-center border-4 border-dashed border-emerald-100 rounded-3xl bg-emerald-50 my-6">
-                                            <p className="font-black text-emerald-900 text-sm mb-10">ANNUAL EXAMINATIONS 2024-25</p>
-                                            <div className="w-32 h-40 bg-white border-4 border-white shadow-xl flex items-center justify-center text-[10px] text-gray-300 font-bold uppercase">Candidate Photo</div>
+                                        <div className="flex-1 flex flex-col items-center justify-center border-4 border-dashed border-emerald-50 rounded-[40px] bg-emerald-50/30 my-6">
+                                            <p className="font-black text-emerald-950 text-sm mb-12 tracking-widest uppercase">Annual Exam Session 2024-25</p>
+                                            <div className="w-32 h-40 bg-white border-4 border-white shadow-2xl flex items-center justify-center text-[10px] text-gray-200 font-bold text-center p-4">STUDENT<br/>PHOTO</div>
                                         </div>
                                     )}
 
@@ -244,14 +277,14 @@
                                     </div>
                                 </div>
 
-                                <div className="no-print mt-8 flex gap-3">
-                                    <button onClick={() => window.print()} className="flex-1 bg-black text-white py-5 rounded-2xl font-black text-lg shadow-xl">PRINT DOCUMENT</button>
+                                <div className="no-print mt-10 flex gap-4">
+                                    <button onClick={() => window.print()} className="flex-1 bg-black text-white py-5 rounded-2xl font-black shadow-xl">PRINT NOW</button>
                                     <button onClick={() => setView('home')} className="px-8 bg-gray-100 py-5 rounded-2xl font-bold text-gray-400">EXIT</button>
                                 </div>
                             </div>
                         )}
                     </main>
-                    <footer className="no-print text-center py-10 text-[9px] font-bold text-gray-300 tracking-[0.3em] uppercase">Al Gazali Academy Secure Cloud System</footer>
+                    <footer className="no-print text-center py-10 text-[9px] font-bold text-gray-300 tracking-[0.4em] uppercase">Al Gazali Academic Cloud Infrastructure</footer>
                 </div>
             );
         };
