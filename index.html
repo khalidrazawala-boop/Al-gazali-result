@@ -3,193 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الغزالی آن لائن گرلز اکیڈمی - آفیشل پورٹل</title>
+    <title>الغزالی آن لائن گرلز اکیڈمی - پورٹل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Nastaliq Urdu', serif; background-color: #f7fee7; }
+        body { font-family: 'Noto Nastaliq Urdu', serif; background-color: #f7fee7; -webkit-tap-highlight-color: transparent; }
         .urdu-text { line-height: 2.2; }
-        @media print { .no-print { display: none !important; } .print-only { display: block !important; } }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        input, select { border: 2px solid #064e3b !important; }
+        button:active { transform: scale(0.95); transition: 0.1s; }
+        .nav-btn { cursor: pointer; padding: 8px 15px; border-radius: 10px; transition: all 0.3s; }
+        .nav-btn:hover { background: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body class="urdu-text">
 
     <!-- Navigation -->
-    <nav class="bg-green-900 text-white p-4 sticky top-0 z-50 shadow-xl no-print">
+    <nav class="bg-green-900 text-white p-4 sticky top-0 z-50 shadow-xl">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-2xl">🎓</span>
-                <h1 class="text-xl md:text-2xl font-bold">الغزالی گرلز اکیڈمی</h1>
+                <h1 class="text-lg md:text-2xl font-bold">الغزالی اکیڈمی</h1>
             </div>
-            <div class="hidden md:flex gap-6 font-bold">
-                <button onclick="showTab('home')" class="hover:text-green-300">ہوم پیج</button>
-                <button onclick="showTab('portal')" class="hover:text-green-300">رزلٹ پورٹل</button>
-                <button onclick="showTab('library')" class="hover:text-green-300">لائبریری</button>
-                <button onclick="showTab('gallery')" class="hover:text-green-300">گیلری</button>
-                <button onclick="toggleAdmin()" class="bg-red-600 px-4 py-1 rounded-full shadow-md">ایڈمن لاگ ان</button>
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex gap-4 font-bold">
+                <button onclick="showTab('home')" class="nav-btn">ہوم</button>
+                <button onclick="showTab('portal')" class="nav-btn">رزلٹ</button>
+                <button onclick="showTab('library')" class="nav-btn">لائبریری</button>
+                <button onclick="showTab('gallery')" class="nav-btn">گیلری</button>
+                <button onclick="toggleAdmin()" class="bg-red-600 px-4 py-1 rounded-full">ایڈمن</button>
             </div>
-            <button class="md:hidden text-2xl" onclick="toggleAdmin()">⚙️</button>
+            <!-- Mobile Icon -->
+            <button class="md:hidden text-2xl p-2" onclick="toggleAdmin()">⚙️</button>
         </div>
     </nav>
 
-    <main class="max-w-6xl mx-auto p-4 min-h-screen">
+    <!-- Bottom Mobile Nav -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-green-900 text-white flex justify-around p-3 z-50 border-t border-green-700">
+        <button onclick="showTab('home')">🏠</button>
+        <button onclick="showTab('portal')">📄</button>
+        <button onclick="showTab('library')">📚</button>
+        <button onclick="showTab('gallery')">🖼️</button>
+    </div>
+
+    <main class="max-w-6xl mx-auto p-4 mb-20 min-h-screen">
         
         <!-- Home Tab -->
-        <div id="home" class="tab-content active text-center space-y-12 py-10">
-            <div class="bg-white p-12 rounded-[3rem] shadow-2xl border-b-[12px] border-green-900 animate-fade-in">
-                <h2 class="text-4xl md:text-6xl font-black text-green-900 mb-6">خوش آمدید</h2>
-                <p class="text-2xl text-gray-700">مفتی خالد رضا مصطفائی صاحب کی زیرِ نگرانی تعلیمی پورٹل</p>
-                <div class="mt-10">
-                    <button onclick="showTab('portal')" class="bg-green-800 text-white px-12 py-4 rounded-full text-2xl font-bold shadow-2xl hover:bg-green-700 transition-all">اپنا رزلٹ دیکھیں</button>
+        <div id="home" class="tab-content active text-center space-y-8 py-10">
+            <div class="bg-white p-8 rounded-[2rem] shadow-xl border-b-8 border-green-900">
+                <h2 class="text-3xl md:text-5xl font-bold text-green-900 mb-4">خوش آمدید</h2>
+                <p class="text-xl text-gray-700">مفتی خالد رضا مصطفائی صاحب کا تعلیمی پورٹل</p>
+                <div class="mt-8">
+                    <button onclick="showTab('portal')" class="bg-green-800 text-white px-8 py-3 rounded-full text-xl font-bold shadow-lg">رزلٹ تلاش کریں</button>
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div onclick="showTab('library')" class="cursor-pointer bg-white p-8 rounded-3xl shadow-lg border-t-4 border-green-600 hover:scale-105 transition-transform">
-                    <span class="text-5xl">📚</span><br><h3 class="text-xl font-bold mt-2">دینی کتب</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div onclick="showTab('library')" class="bg-white p-6 rounded-2xl shadow border-t-4 border-green-600">
+                    <span class="text-4xl">📚</span><h3 class="font-bold mt-2">کتب</h3>
                 </div>
-                <div onclick="showTab('portal')" class="cursor-pointer bg-white p-8 rounded-3xl shadow-lg border-t-4 border-green-600 hover:scale-105 transition-transform">
-                    <span class="text-5xl">📄</span><br><h3 class="text-xl font-bold mt-2">آن لائن رزلٹ</h3>
-                </div>
-                <div onclick="showTab('gallery')" class="cursor-pointer bg-white p-8 rounded-3xl shadow-lg border-t-4 border-green-600 hover:scale-105 transition-transform">
-                    <span class="text-5xl">🖼️</span><br><h3 class="text-xl font-bold mt-2">فوٹو گیلری</h3>
-                </div>
-                <div onclick="showTab('portal')" class="cursor-pointer bg-white p-8 rounded-3xl shadow-lg border-t-4 border-green-600 hover:scale-105 transition-transform">
-                    <span class="text-5xl">🎟️</span><br><h3 class="text-xl font-bold mt-2">رول نمبر سلپ</h3>
+                <div onclick="showTab('gallery')" class="bg-white p-6 rounded-2xl shadow border-t-4 border-green-600">
+                    <span class="text-4xl">🖼️</span><h3 class="font-bold mt-2">گیلری</h3>
                 </div>
             </div>
         </div>
 
         <!-- Portal Tab -->
-        <div id="portal" class="tab-content space-y-8 py-10">
-            <div class="max-w-xl mx-auto bg-white p-10 rounded-3xl shadow-2xl border-2 border-green-900 no-print">
-                <h3 class="text-3xl font-bold text-center mb-8 text-green-900 underline underline-offset-8">سرچ پورٹل</h3>
-                <div class="space-y-4">
-                    <input id="rollInput" type="text" class="w-full p-4 rounded-2xl text-center text-3xl font-bold shadow-inner" placeholder="رول نمبر لکھیں">
-                    <button onclick="handleSearch()" class="w-full bg-green-900 text-white py-5 rounded-2xl font-bold text-2xl shadow-lg active:scale-95 transition-all">تلاش کریں</button>
-                </div>
-                <p id="searchError" class="text-red-600 text-center mt-6 font-bold hidden">افسوس! یہ رول نمبر ہمارے پاس موجود نہیں ہے۔</p>
+        <div id="portal" class="tab-content py-10">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-2xl border-2 border-green-900 text-center">
+                <h3 class="text-2xl font-bold mb-6">سرچ پورٹل</h3>
+                <input id="rollInput" type="text" class="w-full p-4 rounded-xl text-center text-2xl font-bold border-2 mb-4" placeholder="رول نمبر">
+                <button onclick="handleSearch()" class="w-full bg-green-900 text-white py-4 rounded-xl font-bold text-xl shadow-lg">تلاش کریں</button>
+                <p id="searchError" class="text-red-600 mt-4 hidden">رول نمبر نہیں ملا!</p>
             </div>
-
-            <!-- Detailed Result Display -->
-            <div id="resultDisplay" class="hidden bg-white p-8 border-[10px] border-double border-green-900 rounded-3xl shadow-2xl max-w-2xl mx-auto">
-                <!-- Result content injected via JS -->
-            </div>
+            <div id="resultDisplay" class="hidden mt-8 bg-white p-6 border-8 border-double border-green-900 rounded-2xl shadow-xl"></div>
         </div>
 
         <!-- Library Tab -->
         <div id="library" class="tab-content py-10">
-            <h2 class="text-4xl font-bold text-center mb-10 text-green-900 underline underline-offset-8">لائبریری</h2>
-            <div id="libraryList" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Books from DB -->
+            <h2 class="text-3xl font-bold text-center mb-8">لائبریری</h2>
+            <div id="libraryList" class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-gray-500 italic">
+                ابھی تک کوئی کتاب اپ لوڈ نہیں ہوئی۔
             </div>
         </div>
 
         <!-- Gallery Tab -->
         <div id="gallery" class="tab-content py-10">
-            <h2 class="text-4xl font-bold text-center mb-10 text-green-900 underline underline-offset-8">تصویری جھلکیاں</h2>
-            <div id="galleryList" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- Photos from DB -->
+            <h2 class="text-3xl font-bold text-center mb-8">گیلری</h2>
+            <div id="galleryList" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-gray-500 italic">
+                گیلری خالی ہے۔
             </div>
         </div>
 
         <!-- Admin Panel -->
-        <div id="adminPanel" class="tab-content py-10">
-            <div class="flex justify-between items-center mb-8 border-b-4 border-red-600 pb-2">
-                <h2 class="text-3xl font-bold text-red-700">ایڈمن کنٹرول پینل</h2>
-                <button onclick="showTab('home')" class="bg-gray-800 text-white px-4 py-1 rounded">بند کریں</button>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Add Result (6 Subjects) -->
-                <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-green-200">
-                    <h3 class="text-xl font-bold mb-4 bg-green-100 p-2 text-center rounded">نیا رزلٹ اپ لوڈ کریں</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <input id="resRoll" class="p-2 rounded text-center" placeholder="رول نمبر">
-                        <input id="resName" class="p-2 rounded text-center" placeholder="طالبہ کا نام">
-                        <input id="resFather" class="p-2 rounded text-center" placeholder="والد کا نام">
-                        <input id="resClass" class="p-2 rounded text-center" placeholder="درجہ / کلاس">
+        <div id="adminPanel" class="tab-content py-10 bg-white p-6 rounded-2xl border-2 border-red-200">
+            <h2 class="text-2xl font-bold text-red-700 mb-6 border-b pb-2">ایڈمن پینل</h2>
+            <div class="space-y-8">
+                <!-- Result Form -->
+                <div class="border p-4 rounded-xl bg-gray-50">
+                    <h4 class="font-bold mb-4">نیا رزلٹ (6 مضامین)</h4>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <input id="resRoll" class="p-2 border rounded" placeholder="رول نمبر">
+                        <input id="resName" class="p-2 border rounded" placeholder="نام طالبہ">
                     </div>
-                    <div class="space-y-2 mb-4">
-                        <div class="flex gap-2"><input id="s1" class="w-2/3 p-2 rounded" placeholder="مضمون 1" value="قرآن کریم"><input id="m1" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
-                        <div class="flex gap-2"><input id="s2" class="w-2/3 p-2 rounded" placeholder="مضمون 2" value="حدیث مبارکہ"><input id="m2" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
-                        <div class="flex gap-2"><input id="s3" class="w-2/3 p-2 rounded" placeholder="مضمون 3" value="فقہ اسلامی"><input id="m3" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
-                        <div class="flex gap-2"><input id="s4" class="w-2/3 p-2 rounded" placeholder="مضمون 4" value="اردو ادب"><input id="m4" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
-                        <div class="flex gap-2"><input id="s5" class="w-2/3 p-2 rounded" placeholder="مضمون 5" value="عربی گرامر"><input id="m5" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
-                        <div class="flex gap-2"><input id="s6" class="w-2/3 p-2 rounded" placeholder="مضمون 6" value="تاریخ اسلام"><input id="m6" class="w-1/3 p-2 rounded text-center" placeholder="نمبر"></div>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <input id="m1" class="p-2 border rounded" placeholder="قرآن">
+                        <input id="m2" class="p-2 border rounded" placeholder="حدیث">
+                        <input id="m3" class="p-2 border rounded" placeholder="فقہ">
+                        <input id="m4" class="p-2 border rounded" placeholder="اردو">
+                        <input id="m5" class="p-2 border rounded" placeholder="عربی">
+                        <input id="m6" class="p-2 border rounded" placeholder="تاریخ">
                     </div>
-                    <select id="resStatus" class="w-full p-2 rounded mb-4">
-                        <option value="کامیاب">کامیاب (Passed)</option>
-                        <option value="ناکام">ناکام (Failed)</option>
-                    </select>
-                    <button onclick="addResult()" id="resBtn" class="w-full bg-green-800 text-white py-4 rounded-xl font-bold shadow-lg">ڈیٹا بیس میں محفوظ کریں</button>
+                    <button onclick="addResult()" id="resBtn" class="w-full bg-green-800 text-white py-3 rounded-xl font-bold">سیو کریں</button>
                 </div>
 
-                <!-- Books & Gallery -->
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-200">
-                        <h3 class="text-xl font-bold mb-4 bg-blue-50 p-2 text-center rounded">لائبریری میں کتاب ڈالیں</h3>
-                        <input id="bookTitle" class="w-full p-3 rounded mb-2" placeholder="کتاب کا نام">
-                        <input id="bookAuthor" class="w-full p-3 rounded mb-2" placeholder="مصنف کا نام">
-                        <input id="bookLink" class="w-full p-3 rounded mb-2" placeholder="ڈاؤن لوڈ لنک (URL)">
-                        <button onclick="addBook()" id="bookBtn" class="w-full bg-blue-800 text-white py-3 rounded-xl font-bold shadow-lg">کتاب لائیو کریں</button>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-yellow-200">
-                        <h3 class="text-xl font-bold mb-4 bg-yellow-50 p-2 text-center rounded">گیلری میں فوٹو ڈالیں</h3>
-                        <input id="photoUrl" class="w-full p-3 rounded mb-2" placeholder="تصویر کا یو آر ایل (Image Link)">
-                        <button onclick="addPhoto()" id="photoBtn" class="w-full bg-yellow-700 text-white py-3 rounded-xl font-bold shadow-lg">گیلری میں سیو کریں</button>
-                    </div>
+                <div class="border p-4 rounded-xl">
+                    <h4 class="font-bold mb-2">کتاب شامل کریں</h4>
+                    <input id="bookTitle" class="w-full p-2 border rounded mb-2" placeholder="کتاب کا نام">
+                    <input id="bookLink" class="w-full p-2 border rounded mb-2" placeholder="لنک">
+                    <button onclick="addBook()" class="w-full bg-blue-700 text-white py-2 rounded">اپ لوڈ</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Admin Login Modal -->
-    <div id="loginModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[100] p-4">
-        <div class="bg-white p-10 rounded-[2rem] w-full max-w-sm text-center shadow-2xl border-4 border-red-600">
-            <span class="text-5xl mb-4 block">🔐</span>
-            <h3 class="text-2xl font-bold mb-6">ایڈمن پاس ورڈ درج کریں</h3>
-            <input id="passInput" type="password" class="w-full p-4 rounded-2xl text-center text-3xl mb-4 tracking-widest" placeholder="****">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-sm text-center">
+            <h3 class="text-xl font-bold mb-4">ایڈمن لاگ ان</h3>
+            <input id="passInput" type="password" class="w-full p-3 border rounded-xl mb-4 text-center text-2xl" placeholder="****">
             <div class="flex gap-2">
-                <button onclick="checkAdmin()" class="flex-1 bg-red-700 text-white py-4 rounded-2xl font-bold text-xl">داخل ہوں</button>
-                <button onclick="toggleAdmin()" class="bg-gray-200 px-6 rounded-2xl font-bold">بند</button>
+                <button onclick="checkAdmin()" class="flex-1 bg-red-700 text-white py-3 rounded-xl font-bold">داخل ہوں</button>
+                <button onclick="toggleAdmin()" class="bg-gray-100 px-4 rounded-xl">بند</button>
             </div>
         </div>
     </div>
 
-    <footer class="bg-green-950 text-white p-12 mt-20 text-center no-print border-t-[10px] border-green-800">
-        <div class="max-w-4xl mx-auto space-y-4">
-            <h4 class="text-3xl font-bold">الغزالی آن لائن گرلز اکیڈمی</h4>
-            <p class="text-xl opacity-80">سنگاہی خورد، یوپی، انڈیا</p>
-            <p class="italic text-green-300">مفتی خالد رضا مصطفائی | رابطہ: 0000000000</p>
-            <div class="pt-8 text-sm opacity-50 border-t border-white/10">© 2025 تمام جملہ حقوق بحق اکیڈمی محفوظ ہیں۔</div>
-        </div>
-    </footer>
-
-    <!-- Firebase SDKs -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <script>
-        // --- Firebase Configuration ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = "ghazali-academy-v1"; // آپ کا منفرد ایپ آئی ڈی
+        // 1. Initial Setup
+        const appId = "ghazali-final-v2";
+        let db, auth;
 
-        // Anonymous Auth (Always do this first for Firestore)
-        auth.signInAnonymously().catch(e => console.error("Auth Error:", e));
+        try {
+            const firebaseConfig = JSON.parse(__firebase_config);
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            auth.signInAnonymously();
+        } catch(e) { console.log("Firebase not ready"); }
 
-        // Navigation
+        // 2. Navigation Functions
         function showTab(tabId) {
+            console.log("Switching to tab:", tabId);
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+            const target = document.getElementById(tabId);
+            if(target) target.classList.add('active');
             window.scrollTo(0,0);
         }
 
@@ -200,118 +173,96 @@
         }
 
         function checkAdmin() {
-            if(document.getElementById('passInput').value === '786') {
+            const pin = document.getElementById('passInput').value;
+            if(pin === '786') {
                 toggleAdmin();
                 showTab('adminPanel');
-            } else { alert("غلط پاس ورڈ!"); }
+            } else { alert("غلط پن کوڈ!"); }
         }
 
-        // --- Database Functions ---
-
-        // Save Result
+        // 3. Data Functions
         async function addResult() {
             const btn = document.getElementById('resBtn');
             const data = {
-                rollNo: document.getElementById('resRoll').value,
+                roll: document.getElementById('resRoll').value,
                 name: document.getElementById('resName').value,
-                father: document.getElementById('resFather').value,
-                class: document.getElementById('resClass').value,
-                status: document.getElementById('resStatus').value,
-                m1: document.getElementById('m1').value, s1: document.getElementById('s1').value,
-                m2: document.getElementById('m2').value, s2: document.getElementById('s2').value,
-                m3: document.getElementById('m3').value, s3: document.getElementById('s3').value,
-                m4: document.getElementById('m4').value, s4: document.getElementById('s4').value,
-                m5: document.getElementById('m5').value, s5: document.getElementById('s5').value,
-                m6: document.getElementById('m6').value, s6: document.getElementById('s6').value,
-                date: new Date().toLocaleDateString('ur-PK')
+                m1: document.getElementById('m1').value,
+                m2: document.getElementById('m2').value,
+                m3: document.getElementById('m3').value,
+                m4: document.getElementById('m4').value,
+                m5: document.getElementById('m5').value,
+                m6: document.getElementById('m6').value,
+                date: new Date().toLocaleDateString()
             };
 
-            if(!data.rollNo || !data.name) return alert("رول نمبر اور نام ضروری ہے!");
+            if(!data.roll) return alert("رول نمبر ضروری ہے");
             
-            btn.disabled = true; btn.innerText = "محفوظ ہو رہا ہے...";
+            btn.innerText = "ہو رہا ہے...";
             try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('results').doc(data.rollNo).set(data);
-                alert("رزلٹ کامیابی سے محفوظ ہو گیا!");
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('results').doc(data.roll).set(data);
+                alert("رزلٹ سیو ہو گیا!");
                 document.getElementById('resRoll').value = "";
-            } catch(e) { alert("سیو کرنے میں غلطی آئی: " + e.message); }
-            btn.disabled = false; btn.innerText = "ڈیٹا بیس میں محفوظ کریں";
+            } catch(e) { alert("ایرر: " + e.message); }
+            btn.innerText = "سیو کریں";
         }
 
-        // Search Result
         async function handleSearch() {
             const roll = document.getElementById('rollInput').value;
-            const error = document.getElementById('searchError');
             const resBox = document.getElementById('resultDisplay');
-            
-            error.classList.add('hidden');
-            resBox.classList.add('hidden');
+            const err = document.getElementById('searchError');
 
+            if(!roll) return;
+            
             try {
                 const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('results').doc(roll).get();
                 if(snap.exists) {
                     const d = snap.data();
-                    const totalMarks = Number(d.m1||0)+Number(d.m2||0)+Number(d.m3||0)+Number(d.m4||0)+Number(d.m5||0)+Number(d.m6||0);
-                    
+                    err.classList.add('hidden');
                     resBox.innerHTML = `
-                        <div class="text-center mb-8 border-b-2 border-green-900 pb-4">
-                            <h2 class="text-3xl font-bold">سالانہ تعلیمی رپورٹ - 2025</h2>
-                            <p class="text-xl">الغزالی آن لائن گرلز اکیڈمی</p>
+                        <h2 class="text-xl font-bold text-center mb-4 border-b">نتیجہ رپورٹ کارڈ</h2>
+                        <p><b>نام طالبہ:</b> ${d.name}</p>
+                        <p><b>رول نمبر:</b> ${d.roll}</p>
+                        <hr class="my-2">
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>قرآن: ${d.m1}</div><div>حدیث: ${d.m2}</div>
+                            <div>فقہ: ${d.m3}</div><div>اردو: ${d.m4}</div>
+                            <div>عربی: ${d.m5}</div><div>تاریخ: ${d.m6}</div>
                         </div>
-                        <div class="grid grid-cols-2 gap-y-4 text-xl mb-8">
-                            <div><b>نام:</b> ${d.name}</div>
-                            <div><b>رول نمبر:</b> ${d.rollNo}</div>
-                            <div><b>والد:</b> ${d.father}</div>
-                            <div><b>درجہ:</b> ${d.class}</div>
-                        </div>
-                        <table class="w-full border-collapse border-2 border-green-900 text-center mb-8">
-                            <thead class="bg-green-900 text-white">
-                                <tr><th class="p-3 border">مضمون</th><th class="p-3 border">حاصل کردہ نمبر</th></tr>
-                            </thead>
-                            <tbody class="text-xl font-bold">
-                                <tr><td class="p-3 border">${d.s1}</td><td class="p-3 border">${d.m1}</td></tr>
-                                <tr><td class="p-3 border">${d.s2}</td><td class="p-3 border">${d.m2}</td></tr>
-                                <tr><td class="p-3 border">${d.s3}</td><td class="p-3 border">${d.m3}</td></tr>
-                                <tr><td class="p-3 border">${d.s4}</td><td class="p-3 border">${d.m4}</td></tr>
-                                <tr><td class="p-3 border">${d.s5}</td><td class="p-3 border">${d.m5}</td></tr>
-                                <tr><td class="p-3 border">${d.s6}</td><td class="p-3 border">${d.m6}</td></tr>
-                                <tr class="bg-green-100"><td class="p-3 border">کل نمبر</td><td class="p-3 border">${totalMarks} / 600</td></tr>
-                            </tbody>
-                        </table>
-                        <div class="text-center text-4xl font-black ${d.status === 'کامیاب' ? 'text-green-800' : 'text-red-700'} mt-4">نتیجہ: ${d.status}</div>
-                        <div class="mt-10 pt-4 border-t border-dashed flex justify-between no-print">
-                            <button onclick="window.print()" class="bg-green-900 text-white px-8 py-2 rounded-xl">پرنٹ کریں</button>
-                            <button onclick="showTab('home')" class="bg-gray-200 px-8 py-2 rounded-xl">ہوم پیج</button>
-                        </div>
+                        <button onclick="window.print()" class="w-full mt-4 bg-black text-white py-1 rounded">پرنٹ</button>
                     `;
                     resBox.classList.remove('hidden');
-                    resBox.scrollIntoView({behavior: 'smooth'});
-                } else { error.classList.remove('hidden'); }
-            } catch(e) { alert("ڈیٹا بیس کنکشن میں مسئلہ!"); }
+                } else {
+                    resBox.classList.add('hidden');
+                    err.classList.remove('hidden');
+                }
+            } catch(e) { alert("ڈیٹا بیس کا مسئلہ"); }
         }
 
-        // Library & Gallery Management
         async function addBook() {
             const title = document.getElementById('bookTitle').value;
-            const author = document.getElementById('bookAuthor').value;
             const link = document.getElementById('bookLink').value;
-            if(!title || !link) return alert("نام اور لنک ضروری ہے!");
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').add({title, author, link, time: Date.now()});
-            alert("کتاب لائبریری میں شامل ہوگئی!");
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').add({title, link});
+                alert("کتاب شامل ہو گئی!");
+            } catch(e) { alert("مسئلہ آیا"); }
         }
 
-        async function addPhoto() {
-            const url = document.getElementById('photoUrl').value;
-            if(!url) return alert("تصویر کا لنک دیں!");
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('gallery').add({url, time: Date.now()});
-            alert("تصویر گیلری میں شامل ہوگئی!");
+        // 4. Real-time Listeners
+        if(db) {
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').onSnapshot(snap => {
+                const list = document.getElementById('libraryList');
+                if(snap.empty) return;
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const b = doc.data();
+                    list.innerHTML += `<div class="bg-white p-4 shadow rounded-xl">
+                        <h4 class="font-bold">${b.title}</h4>
+                        <a href="${b.link}" target="_blank" class="text-blue-600 underline">پڑھیں</a>
+                    </div>`;
+                });
+            });
         }
+    </script>
+</body>
+</html>
 
-        // Real-time Listeners
-        db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').onSnapshot(snap => {
-            const list = document.getElementById('libraryList');
-            list.innerHTML = "";
-            snap.forEach(doc => {
-                const b = doc.data();
-                list.innerHTML += `
-                    <div class="bg-white p-6 rounded-3xl border-2 border-green-100 shadow-xl text-center hover:shadow-2xl transition-shadow">
-                       
