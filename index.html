@@ -1,312 +1,261 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc } from 'firebase/firestore';
-import { 
-  BookOpen, GraduationCap, FileText, Search, Download, 
-  ShieldCheck, X, PlusCircle, User, Settings, LogIn, Save, Camera, Image as ImageIcon
-} from 'lucide-react';
-
-// --- Firebase Configuration ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ghazali-academy-v5';
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
-  const [user, setUser] = useState(null);
-  const [rollNumber, setRollNumber] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
-  const [searchAdmit, setSearchAdmit] = useState(null);
-  const [searchError, setSearchError] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminPass, setAdminPass] = useState('');
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [books, setBooks] = useState([]);
-  const [gallery, setGallery] = useState([]);
-
-  // Admin Forms
-  const [newResult, setNewResult] = useState({
-    rollNo: '', name: '', father: '', class: '', status: 'کامیاب',
-    s1: 'قرآن کریم', m1: '', s2: 'حدیث مبارکہ', m2: '', s3: 'فقہ اسلامی', m3: '',
-    s4: 'اردو ادب', m4: '', s5: 'عربی گرامر', m5: '', s6: 'تاریخ اسلام', m6: ''
-  });
-  const [newAdmit, setNewAdmit] = useState({ rollNo: '', name: '', father: '', class: '', examDate: '', center: 'الغزالی اکیڈمی' });
-  const [newBook, setNewBook] = useState({ title: '', author: '', link: '', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400' });
-  const [newPhoto, setNewPhoto] = useState({ title: '', url: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?w=800' });
-
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) { console.error("Auth error", err); }
-    };
-    initAuth();
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const qBooks = collection(db, 'artifacts', appId, 'public', 'data', 'books');
-    const qGallery = collection(db, 'artifacts', appId, 'public', 'data', 'gallery');
-    
-    const unsubBooks = onSnapshot(qBooks, (snap) => {
-      setBooks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Books error", err));
-
-    const unsubGallery = onSnapshot(qGallery, (snap) => {
-      setGallery(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Gallery error", err));
-
-    return () => { unsubBooks(); unsubGallery(); };
-  }, [user]);
-
-  const handleAdminAuth = () => {
-    if (adminPass === '786') {
-      setIsAdmin(true);
-      setShowAdminLogin(false);
-      setActiveTab('admin-panel');
-    } else {
-      alert('غلط پاس ورڈ!');
-    }
-  };
-
-  const saveResult = async () => {
-    if (!user || !newResult.rollNo) return;
-    const total = Number(newResult.m1||0) + Number(newResult.m2||0) + Number(newResult.m3||0) + Number(newResult.m4||0) + Number(newResult.m5||0) + Number(newResult.m6||0);
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', newResult.rollNo), { ...newResult, total, date: new Date().toLocaleDateString('ur-PK') });
-    alert('رزلٹ محفوظ ہوگیا!');
-  };
-
-  const saveAdmit = async () => {
-    if (!user || !newAdmit.rollNo) return;
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitcards', newAdmit.rollNo), newAdmit);
-    alert('ایڈمٹ کارڈ محفوظ ہوگیا!');
-  };
-
-  const saveBook = async () => {
-    if (!user || !newBook.title) return;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'books'), newBook);
-    alert('کتاب شامل ہوگئی!');
-  };
-
-  const savePhoto = async () => {
-    if (!user || !newPhoto.url) return;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gallery'), newPhoto);
-    alert('تصویر شامل ہوگئی!');
-  };
-
-  const handleSearch = async () => {
-    setSearchError(''); setSearchResult(null); setSearchAdmit(null);
-    if (!rollNumber) return;
-    const rSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', rollNumber));
-    const aSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitcards', rollNumber));
-    if (rSnap.exists()) setSearchResult(rSnap.data());
-    if (aSnap.exists()) setSearchAdmit(aSnap.data());
-    if (!rSnap.exists() && !aSnap.exists()) setSearchError('رول نمبر نہیں ملا!');
-  };
-
-  return (
-    <div className="min-h-screen bg-white text-right urdu-text" dir="rtl">
-      {/* Navigation */}
-      <nav className="bg-green-900 text-white p-4 sticky top-0 z-50 shadow-lg no-print">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <GraduationCap size={32} />
-            <h1 className="text-xl md:text-2xl font-bold">الغزالی آن لائن گرلز اکیڈمی</h1>
-          </div>
-          <div className="hidden md:flex gap-6 font-bold">
-            <button onClick={() => setActiveTab('home')}>ہوم پیج</button>
-            <button onClick={() => setActiveTab('portal')}>رزلٹ/ایڈمٹ کارڈ</button>
-            <button onClick={() => setActiveTab('library')}>لائبریری</button>
-            <button onClick={() => setActiveTab('gallery')}>گیلری</button>
-            <button onClick={() => setShowAdminLogin(true)} className="bg-red-600 px-3 py-1 rounded">ایڈمن</button>
-          </div>
-          <button className="md:hidden" onClick={() => setShowAdminLogin(true)}><Settings /></button>
-        </div>
-      </nav>
-
-      <main className="max-w-6xl mx-auto p-4 py-8">
-        {activeTab === 'home' && (
-          <div className="space-y-12">
-            <div className="bg-green-100 p-12 rounded-3xl text-center space-y-6">
-              <h2 className="text-4xl md:text-6xl font-black text-green-900">خوش آمدید</h2>
-              <p className="text-xl md:text-2xl text-green-800">الغزالی آن لائن گرلز اکیڈمی کے آفیشل پورٹل پر آپ کا استقبال ہے۔</p>
-              <button onClick={() => setActiveTab('portal')} className="bg-green-900 text-white px-8 py-3 rounded-full text-xl font-bold">اپنا نتیجہ دیکھیں</button>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><BookOpen className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">دینی کتب</h3></div>
-              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><FileText className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">آن لائن رزلٹ</h3></div>
-              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><ImageIcon className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">فوٹو گیلری</h3></div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'portal' && (
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="bg-white p-8 rounded-2xl shadow-xl border-2 border-green-900 text-center no-print">
-              <h2 className="text-3xl font-bold mb-6">سرچ پورٹل</h2>
-              <div className="flex gap-2">
-                <input type="text" className="flex-1 border-2 border-gray-300 p-3 rounded-xl text-center text-xl" placeholder="رول نمبر لکھیں" value={rollNumber} onChange={e => setRollNumber(e.target.value)} />
-                <button onClick={handleSearch} className="bg-green-900 text-white px-6 rounded-xl font-bold">تلاش کریں</button>
-              </div>
-              {searchError && <p className="text-red-600 mt-4 font-bold">{searchError}</p>}
-            </div>
-
-            {searchAdmit && (
-              <div className="bg-white p-8 border-4 border-double border-red-700 rounded-xl relative">
-                <h3 className="text-2xl font-bold text-center border-b pb-4 mb-6">رول نمبر سلپ (2025)</h3>
-                <div className="grid grid-cols-2 gap-4 text-lg">
-                  <div>نام: <b>{searchAdmit.name}</b></div>
-                  <div>رول نمبر: <b>{searchAdmit.rollNo}</b></div>
-                  <div>کلاس: <b>{searchAdmit.class}</b></div>
-                  <div>تاریخ امتحان: <b>{searchAdmit.examDate}</b></div>
-                </div>
-                <button onClick={() => window.print()} className="w-full mt-6 bg-red-700 text-white py-2 rounded no-print">پرنٹ کریں</button>
-              </div>
-            )}
-
-            {searchResult && (
-              <div className="bg-white p-8 border-8 border-double border-green-900 rounded-xl">
-                <div className="text-center border-b-2 pb-4 mb-6">
-                  <h2 className="text-3xl font-bold">مارک شیٹ</h2>
-                  <p>الغزالی آن لائن گرلز اکیڈمی</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-6 font-bold">
-                  <div>نام: {searchResult.name}</div>
-                  <div>رول نمبر: {searchResult.rollNo}</div>
-                </div>
-                <table className="w-full border-collapse border-2 border-green-900 text-center">
-                  <thead className="bg-green-900 text-white">
-                    <tr><th className="p-2 border">مضمون</th><th className="p-2 border">نمبر</th></tr>
-                  </thead>
-                  <tbody>
-                    {[1,2,3,4,5,6].map(i => (
-                      <tr key={i}><td className="p-2 border">{searchResult[`s${i}`]}</td><td className="p-2 border">{searchResult[`m${i}`]}</td></tr>
-                    ))}
-                    <tr className="bg-green-100 font-bold"><td className="p-2 border">کل نمبر</td><td className="p-2 border">{searchResult.total}</td></tr>
-                  </tbody>
-                </table>
-                <div className="mt-6 text-center text-2xl font-black text-green-900">{searchResult.status}</div>
-                <button onClick={() => window.print()} className="w-full mt-6 bg-green-900 text-white py-2 rounded no-print">ڈاؤن لوڈ کریں</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'library' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {books.map(b => (
-              <div key={b.id} className="bg-white border rounded-xl overflow-hidden shadow-md text-center">
-                <img src={b.cover} className="h-48 w-full object-cover" alt="" />
-                <div className="p-4">
-                  <h3 className="font-bold mb-2">{b.title}</h3>
-                  <a href={b.link} target="_blank" className="bg-green-800 text-white px-4 py-1 rounded-lg text-sm">ڈاؤن لوڈ</a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'gallery' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {gallery.map(p => (
-              <div key={p.id} className="rounded-xl overflow-hidden shadow-lg h-60">
-                <img src={p.url} className="w-full h-full object-cover" alt={p.title} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'admin-panel' && isAdmin && (
-          <div className="space-y-10 animate-fade-in">
-            <h2 className="text-3xl font-bold text-red-700 border-b-2 pb-2">ایڈمن کنٹرول پینل</h2>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Result Form */}
-              <div className="bg-gray-50 p-6 rounded-2xl border">
-                <h3 className="text-xl font-bold mb-4">رزلٹ اپ لوڈ کریں</h3>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <input className="p-2 border rounded" placeholder="رول نمبر" value={newResult.rollNo} onChange={e => setNewResult({...newResult, rollNo: e.target.value})} />
-                  <input className="p-2 border rounded" placeholder="نام" value={newResult.name} onChange={e => setNewResult({...newResult, name: e.target.value})} />
-                  <input className="p-2 border rounded" placeholder="والد" value={newResult.father} onChange={e => setNewResult({...newResult, father: e.target.value})} />
-                  <input className="p-2 border rounded" placeholder="کلاس" value={newResult.class} onChange={e => setNewResult({...newResult, class: e.target.value})} />
-                </div>
-                {[1,2,3,4,5,6].map(i => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input className="flex-1 p-1 border rounded" value={newResult[`s${i}`]} onChange={e => setNewResult({...newResult, [`s${i}`]: e.target.value})} />
-                    <input className="w-16 p-1 border rounded text-center" placeholder="نمبر" value={newResult[`m${i}`]} onChange={e => setNewResult({...newResult, [`m${i}`]: e.target.value})} />
-                  </div>
-                ))}
-                <button onClick={saveResult} className="w-full bg-green-800 text-white py-2 rounded mt-2">رزلٹ سیو کریں</button>
-              </div>
-
-              {/* Admit Card Form */}
-              <div className="bg-gray-50 p-6 rounded-2xl border">
-                <h3 className="text-xl font-bold mb-4">ایڈمٹ کارڈ جاری کریں</h3>
-                <div className="space-y-3">
-                  <input className="w-full p-2 border rounded" placeholder="رول نمبر" value={newAdmit.rollNo} onChange={e => setNewAdmit({...newAdmit, rollNo: e.target.value})} />
-                  <input className="w-full p-2 border rounded" placeholder="نام طالبہ" value={newAdmit.name} onChange={e => setNewAdmit({...newAdmit, name: e.target.value})} />
-                  <input className="w-full p-2 border rounded" placeholder="تاریخ (مثلاً 15 مارچ)" value={newAdmit.examDate} onChange={e => setNewAdmit({...newAdmit, examDate: e.target.value})} />
-                  <button onClick={saveAdmit} className="w-full bg-red-700 text-white py-2 rounded">ایڈمٹ کارڈ جاری کریں</button>
-                </div>
-              </div>
-
-              {/* Library Form */}
-              <div className="bg-gray-50 p-6 rounded-2xl border">
-                <h3 className="text-xl font-bold mb-4">لائبریری میں کتاب ڈالیں</h3>
-                <div className="space-y-3">
-                  <input className="w-full p-2 border rounded" placeholder="کتاب کا نام" value={newBook.title} onChange={e => setNewBook({...newBook, title: e.target.value})} />
-                  <input className="w-full p-2 border rounded" placeholder="پی ڈی ایف لنک" value={newBook.link} onChange={e => setNewBook({...newBook, link: e.target.value})} />
-                  <button onClick={saveBook} className="w-full bg-blue-700 text-white py-2 rounded">کتاب شامل کریں</button>
-                </div>
-              </div>
-
-              {/* Gallery Form */}
-              <div className="bg-gray-50 p-6 rounded-2xl border">
-                <h3 className="text-xl font-bold mb-4">گیلری میں فوٹو ڈالیں</h3>
-                <div className="space-y-3">
-                  <input className="w-full p-2 border rounded" placeholder="تصویر کا لنک (URL)" value={newPhoto.url} onChange={e => setNewPhoto({...newPhoto, url: e.target.value})} />
-                  <button onClick={savePhoto} className="w-full bg-yellow-600 text-white py-2 rounded">فوٹو شامل کریں</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Admin Login Modal */}
-      {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-8 rounded-3xl w-full max-w-sm text-center">
-            <h3 className="text-2xl font-bold mb-6">ایڈمن لاگ ان</h3>
-            <input type="password" className="w-full p-3 border rounded-xl mb-4 text-center text-2xl" placeholder="کوڈ" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
-            <div className="flex gap-2">
-              <button onClick={handleAdminAuth} className="flex-1 bg-red-700 text-white py-3 rounded-xl font-bold">داخل ہوں</button>
-              <button onClick={() => setShowAdminLogin(false)} className="bg-gray-200 px-4 rounded-xl">بند</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <footer className="bg-green-950 text-white p-12 mt-20 text-center no-print">
-        <p className="text-xl font-bold mb-2">الغزالی آن لائن گرلز اکیڈمی</p>
-        <p className="opacity-60 italic">مفتی خالد رضا مصطفائی - سنگاہی خورد، یوپی</p>
-      </footer>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap');
-        .urdu-text { font-family: 'Noto Nastaliq Urdu', serif; }
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الغزالی آن لائن گرلز اکیڈمی</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Nastaliq Urdu', serif; background-color: #f0fdf4; }
+        .urdu-text { line-height: 2.2; }
         @media print { .no-print { display: none !important; } }
-      `}</style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="urdu-text">
+
+    <!-- Navigation -->
+    <nav class="bg-green-900 text-white p-4 sticky top-0 z-50 shadow-xl no-print">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold">الغزالی گرلز اکیڈمی</h1>
+            <div class="hidden md:flex gap-4">
+                <button onclick="showTab('home')" class="px-3">ہوم پیج</button>
+                <button onclick="showTab('portal')" class="px-3">رزلٹ / کارڈ</button>
+                <button onclick="showTab('library')" class="px-3">لائبریری</button>
+                <button onclick="showTab('gallery')" class="px-3">گیلری</button>
+                <button onclick="toggleAdmin()" class="bg-red-600 px-4 py-1 rounded">ایڈمن</button>
+            </div>
+            <button class="md:hidden" onclick="toggleAdmin()">⚙️</button>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto p-4 min-h-screen">
+        
+        <!-- Home Tab -->
+        <div id="home" class="tab-content active text-center space-y-10 py-10">
+            <div class="bg-white p-10 rounded-3xl shadow-lg border-b-8 border-green-900">
+                <h2 class="text-4xl md:text-6xl font-black text-green-900 mb-6">خوش آمدید</h2>
+                <p class="text-xl text-gray-700">مفتی خالد رضا مصطفائی کی زیرِ نگرانی قائم کردہ پورٹل</p>
+                <div class="mt-8 flex flex-wrap justify-center gap-4">
+                    <button onclick="showTab('portal')" class="bg-green-800 text-white px-10 py-4 rounded-full text-xl font-bold shadow-lg">نتیجہ تلاش کریں</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-green-50 p-6 rounded-2xl border-2 border-green-100">📖<br>دینی کتب</div>
+                <div class="bg-green-50 p-6 rounded-2xl border-2 border-green-100">📝<br>رزلٹ</div>
+                <div class="bg-green-50 p-6 rounded-2xl border-2 border-green-100">🖼️<br>گیلری</div>
+                <div class="bg-green-50 p-6 rounded-2xl border-2 border-green-100">🆔<br>ایڈمٹ کارڈ</div>
+            </div>
+        </div>
+
+        <!-- Portal Tab -->
+        <div id="portal" class="tab-content space-y-8 py-10">
+            <div class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-2xl border-2 border-green-900 no-print">
+                <h3 class="text-2xl font-bold text-center mb-6">رزلٹ یا ایڈمٹ کارڈ تلاش کریں</h3>
+                <input id="rollInput" type="text" class="w-full border-2 p-4 rounded-xl text-center text-2xl mb-4" placeholder="رول نمبر لکھیں">
+                <button onclick="handleSearch()" class="w-full bg-green-900 text-white py-4 rounded-xl font-bold text-xl">تلاش کریں</button>
+                <p id="searchError" class="text-red-600 text-center mt-4 hidden">رول نمبر نہیں ملا!</p>
+            </div>
+
+            <div id="resultDisplay" class="hidden bg-white p-8 border-8 border-double border-green-900 rounded-xl shadow-2xl">
+                <!-- Result data will appear here -->
+            </div>
+            
+            <div id="admitDisplay" class="hidden bg-white p-8 border-4 border-dashed border-red-700 rounded-xl shadow-2xl">
+                <!-- Admit card data will appear here -->
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div id="library" class="tab-content py-10">
+            <h2 class="text-3xl font-bold text-center mb-10">آن لائن لائبریری</h2>
+            <div id="libraryList" class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <!-- Books will appear here -->
+            </div>
+        </div>
+
+        <!-- Gallery Tab -->
+        <div id="gallery" class="tab-content py-10">
+            <h2 class="text-3xl font-bold text-center mb-10">فوٹو گیلری</h2>
+            <div id="galleryList" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Photos will appear here -->
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="tab-content py-10 bg-gray-50 p-6 rounded-3xl border-2 border-red-200">
+            <h2 class="text-3xl font-bold text-red-700 mb-8 border-b-2">ایڈمن کنٹرول</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Add Book -->
+                <div class="bg-white p-6 rounded-xl shadow border">
+                    <h4 class="font-bold mb-4">کتاب شامل کریں</h4>
+                    <input id="bookTitle" class="w-full border p-2 rounded mb-2" placeholder="کتاب کا نام">
+                    <input id="bookLink" class="w-full border p-2 rounded mb-2" placeholder="پی ڈی ایف لنک">
+                    <button onclick="addBook()" class="w-full bg-blue-700 text-white py-2 rounded">محفوظ کریں</button>
+                </div>
+                <!-- Add Photo -->
+                <div class="bg-white p-6 rounded-xl shadow border">
+                    <h4 class="font-bold mb-4">فوٹو شامل کریں</h4>
+                    <input id="photoUrl" class="w-full border p-2 rounded mb-2" placeholder="فوٹو یو آر ایل (URL)">
+                    <button onclick="addPhoto()" class="w-full bg-yellow-600 text-white py-2 rounded">گیلری میں ڈالیں</button>
+                </div>
+                <!-- Add Result -->
+                <div class="bg-white p-6 rounded-xl shadow border col-span-full">
+                    <h4 class="font-bold mb-4">نیا رزلٹ اپ لوڈ کریں</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input id="resRoll" class="border p-2 rounded" placeholder="رول نمبر">
+                        <input id="resName" class="border p-2 rounded" placeholder="نام طالبہ">
+                        <input id="resClass" class="border p-2 rounded" placeholder="درجہ">
+                        <input id="resMarks" class="border p-2 rounded" placeholder="کل نمبر (مثلاً 550)">
+                    </div>
+                    <button onclick="addResult()" class="w-full bg-green-800 text-white py-2 rounded mt-4">رزلٹ لائیو کریں</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Admin Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white p-10 rounded-3xl w-full max-w-sm text-center">
+            <h3 class="text-2xl font-bold mb-6">ایڈمن پاس ورڈ</h3>
+            <input id="passInput" type="password" class="w-full border-2 p-3 rounded-xl mb-4 text-center text-2xl" placeholder="****">
+            <div class="flex gap-2">
+                <button onclick="checkAdmin()" class="flex-1 bg-red-700 text-white py-3 rounded-xl font-bold">لاگ ان</button>
+                <button onclick="toggleAdmin()" class="bg-gray-200 px-4 rounded-xl">بند</button>
+            </div>
+        </div>
     </div>
-  );
-}
+
+    <footer class="bg-green-950 text-white p-10 mt-20 text-center no-print">
+        <p class="text-xl font-bold">الغزالی آن لائن گرلز اکیڈمی</p>
+        <p class="opacity-70">سنگاہی خورد، یوپی | مفتی خالد رضا مصطفائی</p>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Firebase Config (Replace with yours)
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = "ghazali-portal-v1";
+
+        // Auth
+        auth.signInAnonymously().catch(e => console.error(e));
+
+        // Tab Switcher
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function toggleAdmin() {
+            const modal = document.getElementById('loginModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function checkAdmin() {
+            if(document.getElementById('passInput').value === '786') {
+                toggleAdmin();
+                showTab('adminPanel');
+            } else {
+                alert("غلط پاس ورڈ!");
+            }
+        }
+
+        // Search Result
+        async function handleSearch() {
+            const roll = document.getElementById('rollInput').value;
+            const error = document.getElementById('searchError');
+            const resBox = document.getElementById('resultDisplay');
+            
+            error.classList.add('hidden');
+            resBox.classList.add('hidden');
+
+            const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('results').doc(roll);
+            const snap = await docRef.get();
+
+            if(snap.exists) {
+                const data = snap.data();
+                resBox.innerHTML = `
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold">سالانہ امتحانی نتیجہ - 2025</h2>
+                        <p>الغزالی آن لائن گرلز اکیڈمی</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6 border-b pb-4">
+                        <div><b>نام:</b> ${data.name}</div>
+                        <div><b>رول نمبر:</b> ${data.rollNo}</div>
+                        <div><b>درجہ:</b> ${data.class}</div>
+                        <div><b>حاصل کردہ نمبر:</b> ${data.marks} / 600</div>
+                    </div>
+                    <div class="text-center text-3xl font-black text-green-900">نتیجہ: کامیاب</div>
+                    <button onclick="window.print()" class="w-full mt-6 bg-green-900 text-white py-2 rounded no-print">پرنٹ کریں</button>
+                `;
+                resBox.classList.remove('hidden');
+            } else {
+                error.classList.remove('hidden');
+            }
+        }
+
+        // Admin Functions
+        async function addBook() {
+            const title = document.getElementById('bookTitle').value;
+            const link = document.getElementById('bookLink').value;
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').add({title, link});
+            alert("کتاب شامل ہوگئی!");
+        }
+
+        async function addPhoto() {
+            const url = document.getElementById('photoUrl').value;
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('gallery').add({url});
+            alert("فوٹو شامل ہوگئی!");
+        }
+
+        async function addResult() {
+            const rollNo = document.getElementById('resRoll').value;
+            const name = document.getElementById('resName').value;
+            const classVal = document.getElementById('resClass').value;
+            const marks = document.getElementById('resMarks').value;
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('results').doc(rollNo).set({rollNo, name, class: classVal, marks});
+            alert("رزلٹ لائیو ہوگیا!");
+        }
+
+        // Listen for Books
+        db.collection('artifacts').doc(appId).collection('public').doc('data').collection('books').onSnapshot(snap => {
+            const list = document.getElementById('libraryList');
+            list.innerHTML = "";
+            snap.forEach(doc => {
+                const b = doc.data();
+                list.innerHTML += `<div class="bg-white p-4 border rounded-xl text-center shadow">
+                    <div class="text-3xl mb-2">📚</div>
+                    <h4 class="font-bold mb-2">${b.title}</h4>
+                    <a href="${b.link}" target="_blank" class="bg-green-800 text-white px-4 py-1 rounded text-xs">ڈاؤن لوڈ</a>
+                </div>`;
+            });
+        });
+
+        // Listen for Gallery
+        db.collection('artifacts').doc(appId).collection('public').doc('data').collection('gallery').onSnapshot(snap => {
+            const list = document.getElementById('galleryList');
+            list.innerHTML = "";
+            snap.forEach(doc => {
+                const p = doc.data();
+                list.innerHTML += `<div class="h-40 rounded-xl overflow-hidden shadow">
+                    <img src="${p.url}" class="w-full h-full object-cover">
+                </div>`;
+            });
+        });
+    </script>
+</body>
+</html>
+
 
