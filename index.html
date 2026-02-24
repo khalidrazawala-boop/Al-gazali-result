@@ -1,253 +1,312 @@
-<!DOCTYPE html>
-<html lang="ur" dir="ltr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AL GAZALI ONLINE GIRLS ACADEMY</title>
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc } from 'firebase/firestore';
+import { 
+  BookOpen, GraduationCap, FileText, Search, Download, 
+  ShieldCheck, X, PlusCircle, User, Settings, LogIn, Save, Camera, Image as ImageIcon
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ghazali-academy-v5';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [user, setUser] = useState(null);
+  const [rollNumber, setRollNumber] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchAdmit, setSearchAdmit] = useState(null);
+  const [searchError, setSearchError] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPass, setAdminPass] = useState('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [books, setBooks] = useState([]);
+  const [gallery, setGallery] = useState([]);
+
+  // Admin Forms
+  const [newResult, setNewResult] = useState({
+    rollNo: '', name: '', father: '', class: '', status: 'کامیاب',
+    s1: 'قرآن کریم', m1: '', s2: 'حدیث مبارکہ', m2: '', s3: 'فقہ اسلامی', m3: '',
+    s4: 'اردو ادب', m4: '', s5: 'عربی گرامر', m5: '', s6: 'تاریخ اسلام', m6: ''
+  });
+  const [newAdmit, setNewAdmit] = useState({ rollNo: '', name: '', father: '', class: '', examDate: '', center: 'الغزالی اکیڈمی' });
+  const [newBook, setNewBook] = useState({ title: '', author: '', link: '', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400' });
+  const [newPhoto, setNewPhoto] = useState({ title: '', url: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?w=800' });
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth error", err); }
+    };
+    initAuth();
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const qBooks = collection(db, 'artifacts', appId, 'public', 'data', 'books');
+    const qGallery = collection(db, 'artifacts', appId, 'public', 'data', 'gallery');
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    const unsubBooks = onSnapshot(qBooks, (snap) => {
+      setBooks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => console.error("Books error", err));
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    const unsubGallery = onSnapshot(qGallery, (snap) => {
+      setGallery(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => console.error("Gallery error", err));
 
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    return () => { unsubBooks(); unsubGallery(); };
+  }, [user]);
 
-    <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #f1f5f9; }
-        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif !important; line-height: 2.2; }
-        .glass-card { background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .input-box { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; font-weight: 600; }
-        .input-box:focus { border-color: #064e3b; }
-        .btn-green { background: #064e3b; color: white; padding: 15px; border-radius: 12px; font-weight: 700; width: 100%; }
-        .btn-green:active { transform: scale(0.98); }
-        @media print { .no-print { display: none !important; } }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+  const handleAdminAuth = () => {
+    if (adminPass === '786') {
+      setIsAdmin(true);
+      setShowAdminLogin(false);
+      setActiveTab('admin-panel');
+    } else {
+      alert('غلط پاس ورڈ!');
+    }
+  };
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+  const saveResult = async () => {
+    if (!user || !newResult.rollNo) return;
+    const total = Number(newResult.m1||0) + Number(newResult.m2||0) + Number(newResult.m3||0) + Number(newResult.m4||0) + Number(newResult.m5||0) + Number(newResult.m6||0);
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', newResult.rollNo), { ...newResult, total, date: new Date().toLocaleDateString('ur-PK') });
+    alert('رزلٹ محفوظ ہوگیا!');
+  };
 
-        const App = () => {
-            const [view, setView] = useState('home');
-            const [db, setDb] = useState(null);
-            const [loading, setLoading] = useState(false);
-            const [isLoggedIn, setIsLoggedIn] = useState(false);
-            const [rollNoInput, setRollNoInput] = useState('');
-            const [studentData, setStudentData] = useState(null);
-            
-            // Manual Subjects (Ab aap khud likh sakte hain)
-            const [entry, setEntry] = useState({
-                name: '', rollNo: '', father: '', className: '', session: '2024-25',
-                subjects: [
-                    { name: '', marks: '' }, { name: '', marks: '' },
-                    { name: '', marks: '' }, { name: '', marks: '' },
-                    { name: '', marks: '' }, { name: '', marks: '' }
-                ]
-            });
+  const saveAdmit = async () => {
+    if (!user || !newAdmit.rollNo) return;
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitcards', newAdmit.rollNo), newAdmit);
+    alert('ایڈمٹ کارڈ محفوظ ہوگیا!');
+  };
 
-            useEffect(() => {
-                const init = async () => {
-                    try {
-                        const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                        if (config && !firebase.apps.length) {
-                            firebase.initializeApp(config);
-                            // Direct Sign In
-                            await firebase.auth().signInAnonymously();
-                            setDb(firebase.firestore());
-                        }
-                    } catch (e) {
-                        console.error("Firebase Init Error", e);
-                    }
-                };
-                init();
-            }, []);
+  const saveBook = async () => {
+    if (!user || !newBook.title) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'books'), newBook);
+    alert('کتاب شامل ہوگئی!');
+  };
 
-            // DEMO ACCOUNT (Testing ke liye)
-            const fillDemo = () => {
-                setEntry({
-                    name: 'Demo Student', rollNo: '1001', father: 'Father Name', className: 'Grade 1', session: '2024-25',
-                    subjects: [
-                        { name: 'Quran', marks: '90' }, { name: 'Hadees', marks: '85' },
-                        { name: 'Fiqh', marks: '80' }, { name: 'Urdu', marks: '75' },
-                        { name: 'Arabi', marks: '70' }, { name: 'English', marks: '65' }
-                    ]
-                });
-            };
+  const savePhoto = async () => {
+    if (!user || !newPhoto.url) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gallery'), newPhoto);
+    alert('تصویر شامل ہوگئی!');
+  };
 
-            const saveResult = async () => {
-                const firestore = db || (firebase.apps.length ? firebase.firestore() : null);
-                if (!firestore) return alert("System connect ho raha hai... 5 second baad try karein.");
-                if (!entry.name || !entry.rollNo) return alert("Naam aur Roll No lazmi hai.");
+  const handleSearch = async () => {
+    setSearchError(''); setSearchResult(null); setSearchAdmit(null);
+    if (!rollNumber) return;
+    const rSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', rollNumber));
+    const aSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admitcards', rollNumber));
+    if (rSnap.exists()) setSearchResult(rSnap.data());
+    if (aSnap.exists()) setSearchAdmit(aSnap.data());
+    if (!rSnap.exists() && !aSnap.exists()) setSearchError('رول نمبر نہیں ملا!');
+  };
 
-                setLoading(true);
-                try {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
-                    await firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(entry.rollNo).set(entry);
-                    alert("Mubarak! Data Save Ho Gaya.");
-                    setEntry({
-                        name: '', rollNo: '', father: '', className: '', session: '2024-25',
-                        subjects: [{name:'', marks:''}, {name:'', marks:''}, {name:'', marks:''}, {name:'', marks:''}, {name:'', marks:''}, {name:'', marks:''}]
-                    });
-                } catch (err) {
-                    alert("Error: " + err.message);
-                } finally {
-                    setLoading(false);
-                }
-            };
+  return (
+    <div className="min-h-screen bg-white text-right urdu-text" dir="rtl">
+      {/* Navigation */}
+      <nav className="bg-green-900 text-white p-4 sticky top-0 z-50 shadow-lg no-print">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <GraduationCap size={32} />
+            <h1 className="text-xl md:text-2xl font-bold">الغزالی آن لائن گرلز اکیڈمی</h1>
+          </div>
+          <div className="hidden md:flex gap-6 font-bold">
+            <button onClick={() => setActiveTab('home')}>ہوم پیج</button>
+            <button onClick={() => setActiveTab('portal')}>رزلٹ/ایڈمٹ کارڈ</button>
+            <button onClick={() => setActiveTab('library')}>لائبریری</button>
+            <button onClick={() => setActiveTab('gallery')}>گیلری</button>
+            <button onClick={() => setShowAdminLogin(true)} className="bg-red-600 px-3 py-1 rounded">ایڈمن</button>
+          </div>
+          <button className="md:hidden" onClick={() => setShowAdminLogin(true)}><Settings /></button>
+        </div>
+      </nav>
 
-            const search = async (target) => {
-                const firestore = db || (firebase.apps.length ? firebase.firestore() : null);
-                if (!rollNoInput) return alert("Roll Number likhein.");
-                if (!firestore) return alert("Connecting...");
+      <main className="max-w-6xl mx-auto p-4 py-8">
+        {activeTab === 'home' && (
+          <div className="space-y-12">
+            <div className="bg-green-100 p-12 rounded-3xl text-center space-y-6">
+              <h2 className="text-4xl md:text-6xl font-black text-green-900">خوش آمدید</h2>
+              <p className="text-xl md:text-2xl text-green-800">الغزالی آن لائن گرلز اکیڈمی کے آفیشل پورٹل پر آپ کا استقبال ہے۔</p>
+              <button onClick={() => setActiveTab('portal')} className="bg-green-900 text-white px-8 py-3 rounded-full text-xl font-bold">اپنا نتیجہ دیکھیں</button>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><BookOpen className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">دینی کتب</h3></div>
+              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><FileText className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">آن لائن رزلٹ</h3></div>
+              <div className="border-2 border-green-200 p-6 rounded-2xl text-center"><ImageIcon className="mx-auto mb-4 text-green-700" size={48}/><h3 className="text-2xl font-bold">فوٹو گیلری</h3></div>
+            </div>
+          </div>
+        )}
 
-                setLoading(true);
-                try {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'al-gazali-main';
-                    const doc = await firestore.collection('artifacts').doc(appId).collection('public').doc('data').collection('students').doc(rollNoInput).get();
-                    if (doc.exists) {
-                        setStudentData(doc.data());
-                        setView(target);
-                    } else {
-                        alert("Record nahi mila!");
-                    }
-                } catch (e) {
-                    alert("Error: " + e.message);
-                } finally {
-                    setLoading(false);
-                }
-            };
+        {activeTab === 'portal' && (
+          <div className="max-w-2xl mx-auto space-y-8">
+            <div className="bg-white p-8 rounded-2xl shadow-xl border-2 border-green-900 text-center no-print">
+              <h2 className="text-3xl font-bold mb-6">سرچ پورٹل</h2>
+              <div className="flex gap-2">
+                <input type="text" className="flex-1 border-2 border-gray-300 p-3 rounded-xl text-center text-xl" placeholder="رول نمبر لکھیں" value={rollNumber} onChange={e => setRollNumber(e.target.value)} />
+                <button onClick={handleSearch} className="bg-green-900 text-white px-6 rounded-xl font-bold">تلاش کریں</button>
+              </div>
+              {searchError && <p className="text-red-600 mt-4 font-bold">{searchError}</p>}
+            </div>
 
-            return (
-                <div className="min-h-screen">
-                    <header className="bg-[#064e3b] text-white p-10 text-center no-print shadow-lg">
-                        <h1 className="text-3xl font-black mb-2">AL GAZALI ONLINE ACADEMY</h1>
-                        <p className="urdu-font text-2xl">تعلیم و تربیت کا بہترین مرکز</p>
-                    </header>
-
-                    <main className="max-w-xl mx-auto p-4 -mt-10">
-                        {view === 'home' && (
-                            <div className="glass-card p-8 text-center border-t-8 border-[#064e3b]">
-                                <input 
-                                    type="text" 
-                                    placeholder="Roll Number (e.g. 1001)" 
-                                    className="input-box text-2xl text-center mb-6"
-                                    value={rollNoInput}
-                                    onChange={e => setRollNoInput(e.target.value)}
-                                />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={() => search('result')} className="btn-green">RESULT</button>
-                                    <button onClick={() => search('admit')} className="bg-white border-2 border-[#064e3b] text-[#064e3b] font-bold p-4 rounded-xl">ADMIT CARD</button>
-                                </div>
-                                <button onClick={() => setView('admin')} className="mt-6 text-gray-400 text-xs font-bold uppercase">Staff Login</button>
-                            </div>
-                        )}
-
-                        {view === 'admin' && (
-                            <div className="glass-card p-6 border-t-8 border-orange-500">
-                                {!isLoggedIn ? (
-                                    <div className="text-center py-6">
-                                        <h2 className="font-bold text-xl mb-4">Security Code</h2>
-                                        <input id="p" type="password" placeholder="Code: 1234" className="input-box mb-4 text-center" />
-                                        <div className="flex gap-2">
-                                            <button onClick={() => document.getElementById('p').value === '1234' ? setIsLoggedIn(true) : alert("Wrong")} className="btn-green">Login</button>
-                                            <button onClick={() => setView('home')} className="flex-1 bg-gray-100 p-4 rounded-xl font-bold">Back</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="font-black">STUDENT DATA ENTRY</h2>
-                                            <button onClick={fillDemo} className="bg-blue-600 text-white px-4 py-1 rounded-full text-[10px] font-bold">DEMO DATA</button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input placeholder="Name" className="input-box text-sm" value={entry.name} onChange={e => setEntry({...entry, name: e.target.value})} />
-                                            <input placeholder="Roll No" className="input-box text-sm" value={entry.rollNo} onChange={e => setEntry({...entry, rollNo: e.target.value})} />
-                                            <input placeholder="Father" className="input-box text-sm" value={entry.father} onChange={e => setEntry({...entry, father: e.target.value})} />
-                                            <input placeholder="Class" className="input-box text-sm" value={entry.className} onChange={e => setEntry({...entry, className: e.target.value})} />
-                                        </div>
-                                        <p className="text-[10px] font-bold text-emerald-700">SUBJECTS & MARKS (Enter Manually):</p>
-                                        <div className="bg-gray-50 p-4 rounded-xl space-y-2">
-                                            {entry.subjects.map((s, i) => (
-                                                <div key={i} className="flex gap-2">
-                                                    <input placeholder={`Subject ${i+1}`} className="flex-1 p-2 rounded border text-sm" value={s.name} onChange={e => {
-                                                        const n = [...entry.subjects]; n[i].name = e.target.value; setEntry({...entry, subjects: n});
-                                                    }} />
-                                                    <input type="number" placeholder="Marks" className="w-16 p-2 rounded border text-sm text-center" value={s.marks} onChange={e => {
-                                                        const n = [...entry.subjects]; n[i].marks = e.target.value; setEntry({...entry, subjects: n});
-                                                    }} />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <button disabled={loading} onClick={saveResult} className="btn-green shadow-xl">
-                                            {loading ? 'SAVING...' : 'SAVE & PUBLISH'}
-                                        </button>
-                                        <button onClick={() => setView('home')} className="w-full text-center text-gray-400 font-bold text-xs mt-4 uppercase">Exit</button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {(view === 'result' || view === 'admit') && studentData && (
-                            <div className="glass-card p-4 md:p-8 bg-white border-[6px] border-double border-[#064e3b]">
-                                <div className="text-center border-b-2 border-[#064e3b] pb-4 mb-6">
-                                    <h2 className="text-xl font-bold">AL GAZALI ONLINE ACADEMY</h2>
-                                    <p className="urdu-font text-2xl text-[#064e3b]">تعلیم و تربیت کا بہترین مرکز</p>
-                                </div>
-                                <div className="grid grid-cols-2 text-xs font-bold gap-y-4 mb-6">
-                                    <div>NAME: {studentData.name.toUpperCase()}</div>
-                                    <div className="text-right">ROLL NO: {studentData.rollNo}</div>
-                                    <div>FATHER: {studentData.father.toUpperCase()}</div>
-                                    <div className="text-right">CLASS: {studentData.className}</div>
-                                </div>
-
-                                {view === 'result' ? (
-                                    <div>
-                                        <table className="w-full text-xs">
-                                            <thead className="bg-[#064e3b] text-white">
-                                                <tr><th className="p-2 text-left">SUBJECT</th><th className="p-2 text-center">MARKS</th></tr>
-                                            </thead>
-                                            <tbody>
-                                                {studentData.subjects.filter(s => s.name).map((s, i) => (
-                                                    <tr key={i} className="border-b"><td className="p-2 uppercase">{s.name}</td><td className="p-2 text-center font-bold text-lg">{s.marks}</td></tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <div className="mt-6 bg-[#064e3b] text-white p-4 rounded-xl flex items-center">
-                                            <div className="flex-1 font-bold">TOTAL AGGREGATE</div>
-                                            <div className="text-3xl font-black">{studentData.subjects.reduce((a, b) => a + (Number(b.marks) || 0), 0)}</div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="py-16 bg-emerald-50 rounded-3xl border-2 border-dashed border-emerald-100 flex flex-col items-center">
-                                        <p className="font-bold text-sm mb-8 uppercase tracking-widest">Admit Card 2024-25</p>
-                                        <div className="w-24 h-32 bg-white border-2 border-emerald-200 flex items-center justify-center text-[8px] text-gray-300">PHOTO</div>
-                                    </div>
-                                )}
-                                <div className="mt-10 flex justify-between px-2">
-                                    <div className="border-t border-black w-24 text-center text-[8px] pt-1">CONTROLLER</div>
-                                    <div className="border-t border-black w-24 text-center text-[8px] pt-1">PRINCIPAL</div>
-                                </div>
-                                <div className="no-print mt-8 flex gap-2">
-                                    <button onClick={() => window.print()} className="flex-1 bg-black text-white p-4 rounded-xl font-bold">PRINT</button>
-                                    <button onClick={() => setView('home')} className="flex-1 bg-gray-100 p-4 rounded-xl font-bold">BACK</button>
-                                </div>
-                            </div>
-                        )}
-                    </main>
+            {searchAdmit && (
+              <div className="bg-white p-8 border-4 border-double border-red-700 rounded-xl relative">
+                <h3 className="text-2xl font-bold text-center border-b pb-4 mb-6">رول نمبر سلپ (2025)</h3>
+                <div className="grid grid-cols-2 gap-4 text-lg">
+                  <div>نام: <b>{searchAdmit.name}</b></div>
+                  <div>رول نمبر: <b>{searchAdmit.rollNo}</b></div>
+                  <div>کلاس: <b>{searchAdmit.class}</b></div>
+                  <div>تاریخ امتحان: <b>{searchAdmit.examDate}</b></div>
                 </div>
-            );
-        };
+                <button onClick={() => window.print()} className="w-full mt-6 bg-red-700 text-white py-2 rounded no-print">پرنٹ کریں</button>
+              </div>
+            )}
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+            {searchResult && (
+              <div className="bg-white p-8 border-8 border-double border-green-900 rounded-xl">
+                <div className="text-center border-b-2 pb-4 mb-6">
+                  <h2 className="text-3xl font-bold">مارک شیٹ</h2>
+                  <p>الغزالی آن لائن گرلز اکیڈمی</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-6 font-bold">
+                  <div>نام: {searchResult.name}</div>
+                  <div>رول نمبر: {searchResult.rollNo}</div>
+                </div>
+                <table className="w-full border-collapse border-2 border-green-900 text-center">
+                  <thead className="bg-green-900 text-white">
+                    <tr><th className="p-2 border">مضمون</th><th className="p-2 border">نمبر</th></tr>
+                  </thead>
+                  <tbody>
+                    {[1,2,3,4,5,6].map(i => (
+                      <tr key={i}><td className="p-2 border">{searchResult[`s${i}`]}</td><td className="p-2 border">{searchResult[`m${i}`]}</td></tr>
+                    ))}
+                    <tr className="bg-green-100 font-bold"><td className="p-2 border">کل نمبر</td><td className="p-2 border">{searchResult.total}</td></tr>
+                  </tbody>
+                </table>
+                <div className="mt-6 text-center text-2xl font-black text-green-900">{searchResult.status}</div>
+                <button onClick={() => window.print()} className="w-full mt-6 bg-green-900 text-white py-2 rounded no-print">ڈاؤن لوڈ کریں</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'library' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {books.map(b => (
+              <div key={b.id} className="bg-white border rounded-xl overflow-hidden shadow-md text-center">
+                <img src={b.cover} className="h-48 w-full object-cover" alt="" />
+                <div className="p-4">
+                  <h3 className="font-bold mb-2">{b.title}</h3>
+                  <a href={b.link} target="_blank" className="bg-green-800 text-white px-4 py-1 rounded-lg text-sm">ڈاؤن لوڈ</a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'gallery' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {gallery.map(p => (
+              <div key={p.id} className="rounded-xl overflow-hidden shadow-lg h-60">
+                <img src={p.url} className="w-full h-full object-cover" alt={p.title} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'admin-panel' && isAdmin && (
+          <div className="space-y-10 animate-fade-in">
+            <h2 className="text-3xl font-bold text-red-700 border-b-2 pb-2">ایڈمن کنٹرول پینل</h2>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Result Form */}
+              <div className="bg-gray-50 p-6 rounded-2xl border">
+                <h3 className="text-xl font-bold mb-4">رزلٹ اپ لوڈ کریں</h3>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <input className="p-2 border rounded" placeholder="رول نمبر" value={newResult.rollNo} onChange={e => setNewResult({...newResult, rollNo: e.target.value})} />
+                  <input className="p-2 border rounded" placeholder="نام" value={newResult.name} onChange={e => setNewResult({...newResult, name: e.target.value})} />
+                  <input className="p-2 border rounded" placeholder="والد" value={newResult.father} onChange={e => setNewResult({...newResult, father: e.target.value})} />
+                  <input className="p-2 border rounded" placeholder="کلاس" value={newResult.class} onChange={e => setNewResult({...newResult, class: e.target.value})} />
+                </div>
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="flex gap-2 mb-2">
+                    <input className="flex-1 p-1 border rounded" value={newResult[`s${i}`]} onChange={e => setNewResult({...newResult, [`s${i}`]: e.target.value})} />
+                    <input className="w-16 p-1 border rounded text-center" placeholder="نمبر" value={newResult[`m${i}`]} onChange={e => setNewResult({...newResult, [`m${i}`]: e.target.value})} />
+                  </div>
+                ))}
+                <button onClick={saveResult} className="w-full bg-green-800 text-white py-2 rounded mt-2">رزلٹ سیو کریں</button>
+              </div>
+
+              {/* Admit Card Form */}
+              <div className="bg-gray-50 p-6 rounded-2xl border">
+                <h3 className="text-xl font-bold mb-4">ایڈمٹ کارڈ جاری کریں</h3>
+                <div className="space-y-3">
+                  <input className="w-full p-2 border rounded" placeholder="رول نمبر" value={newAdmit.rollNo} onChange={e => setNewAdmit({...newAdmit, rollNo: e.target.value})} />
+                  <input className="w-full p-2 border rounded" placeholder="نام طالبہ" value={newAdmit.name} onChange={e => setNewAdmit({...newAdmit, name: e.target.value})} />
+                  <input className="w-full p-2 border rounded" placeholder="تاریخ (مثلاً 15 مارچ)" value={newAdmit.examDate} onChange={e => setNewAdmit({...newAdmit, examDate: e.target.value})} />
+                  <button onClick={saveAdmit} className="w-full bg-red-700 text-white py-2 rounded">ایڈمٹ کارڈ جاری کریں</button>
+                </div>
+              </div>
+
+              {/* Library Form */}
+              <div className="bg-gray-50 p-6 rounded-2xl border">
+                <h3 className="text-xl font-bold mb-4">لائبریری میں کتاب ڈالیں</h3>
+                <div className="space-y-3">
+                  <input className="w-full p-2 border rounded" placeholder="کتاب کا نام" value={newBook.title} onChange={e => setNewBook({...newBook, title: e.target.value})} />
+                  <input className="w-full p-2 border rounded" placeholder="پی ڈی ایف لنک" value={newBook.link} onChange={e => setNewBook({...newBook, link: e.target.value})} />
+                  <button onClick={saveBook} className="w-full bg-blue-700 text-white py-2 rounded">کتاب شامل کریں</button>
+                </div>
+              </div>
+
+              {/* Gallery Form */}
+              <div className="bg-gray-50 p-6 rounded-2xl border">
+                <h3 className="text-xl font-bold mb-4">گیلری میں فوٹو ڈالیں</h3>
+                <div className="space-y-3">
+                  <input className="w-full p-2 border rounded" placeholder="تصویر کا لنک (URL)" value={newPhoto.url} onChange={e => setNewPhoto({...newPhoto, url: e.target.value})} />
+                  <button onClick={savePhoto} className="w-full bg-yellow-600 text-white py-2 rounded">فوٹو شامل کریں</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white p-8 rounded-3xl w-full max-w-sm text-center">
+            <h3 className="text-2xl font-bold mb-6">ایڈمن لاگ ان</h3>
+            <input type="password" className="w-full p-3 border rounded-xl mb-4 text-center text-2xl" placeholder="کوڈ" value={adminPass} onChange={e => setAdminPass(e.target.value)} />
+            <div className="flex gap-2">
+              <button onClick={handleAdminAuth} className="flex-1 bg-red-700 text-white py-3 rounded-xl font-bold">داخل ہوں</button>
+              <button onClick={() => setShowAdminLogin(false)} className="bg-gray-200 px-4 rounded-xl">بند</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-green-950 text-white p-12 mt-20 text-center no-print">
+        <p className="text-xl font-bold mb-2">الغزالی آن لائن گرلز اکیڈمی</p>
+        <p className="opacity-60 italic">مفتی خالد رضا مصطفائی - سنگاہی خورد، یوپی</p>
+      </footer>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap');
+        .urdu-text { font-family: 'Noto Nastaliq Urdu', serif; }
+        @media print { .no-print { display: none !important; } }
+      `}</style>
+    </div>
+  );
+}
 
